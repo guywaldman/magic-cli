@@ -1,4 +1,5 @@
-name: "Test Suite"
+name: "PR"
+
 on:
   pull_request:
     branches: [main]
