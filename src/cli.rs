@@ -2,14 +2,35 @@ use std::error::Error;
 
 use clipboard::{ClipboardContext, ClipboardProvider};
 use colored::Colorize;
-use inquire::{Confirm, Text};
+use inquire::Confirm;
+use thiserror::Error;
 
 use crate::{
-    engine::{Engine, SuggestedCommand},
+    engine::Engine,
     ollama::{client::OllamaApiClient, config::OllamaConfig},
 };
 
 use clap::{Args, Parser, Subcommand};
+
+#[derive(Debug, Clone)]
+pub struct CliConfig {
+    pub ollama_config: OllamaConfig,
+}
+
+#[derive(Error, Debug)]
+pub enum CliConfigError {
+    // #[error("Configuration file not found: {0}")]
+    // MissingConfigFile(String),
+}
+
+impl CliConfig {
+    pub fn load_config() -> Result<Self, CliConfigError> {
+        // TODO: Load config from file.
+        Ok(Self {
+            ollama_config: Default::default(),
+        })
+    }
+}
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -32,11 +53,13 @@ struct ExplainSubcommand {
 }
 
 #[derive(Debug)]
-pub struct Cli {}
+pub struct Cli {
+    config: CliConfig,
+}
 
 impl Cli {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(config: CliConfig) -> Self {
+        Self { config }
     }
 
     pub fn run(&self, args: std::env::Args) -> Result<(), Box<dyn Error>> {
@@ -53,7 +76,7 @@ impl Cli {
     }
 
     fn explain_subcommand(&self, prompt: &str) -> Result<(), Box<dyn Error>> {
-        let engine = Engine::new(OllamaApiClient::new(OllamaConfig::default()));
+        let engine = Engine::new(OllamaApiClient::new(self.config.ollama_config.clone()));
         println!(
             "{} {}",
             "Generating suggested command for prompt".dimmed(),

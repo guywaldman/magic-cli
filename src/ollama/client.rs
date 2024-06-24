@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use super::{
     config::OllamaConfig,
-    models::{OllamaApiModelsMetadata, OllamaGenerateRequest, OllamaGenerateResponse},
+    models::{OllamaGenerateRequest, OllamaGenerateResponse},
 };
 
 #[derive(Debug)]
@@ -24,17 +24,17 @@ impl OllamaApiClient {
         Self { config }
     }
 
-    pub fn list_local_models(&self) -> Result<OllamaApiModelsMetadata, OllamaApiClientError> {
-        let client = reqwest::blocking::Client::new();
-        let url = format!("{}/api/tags", self.config.base_url);
-        let response = client
-            .get(url)
-            .send()
-            .map_err(|e| OllamaApiClientError::ApiUnavailable(e.to_string()))?;
-        let body = response.text().map_err(|e| OllamaApiClientError::ApiError(e.to_string()))?;
-        let models: OllamaApiModelsMetadata = serde_json::from_str(&body).map_err(|e| OllamaApiClientError::ApiError(e.to_string()))?;
-        Ok(models)
-    }
+    // pub fn list_local_models(&self) -> Result<OllamaApiModelsMetadata, OllamaApiClientError> {
+    //     let client = reqwest::blocking::Client::new();
+    //     let url = format!("{}/api/tags", self.config.base_url);
+    //     let response = client
+    //         .get(url)
+    //         .send()
+    //         .map_err(|e| OllamaApiClientError::ApiUnavailable(e.to_string()))?;
+    //     let body = response.text().map_err(|e| OllamaApiClientError::ApiError(e.to_string()))?;
+    //     let models: OllamaApiModelsMetadata = serde_json::from_str(&body).map_err(|e| OllamaApiClientError::ApiError(e.to_string()))?;
+    //     Ok(models)
+    // }
 
     pub fn generate(&self, prompt: &str, system_prompt: &str) -> Result<String, OllamaApiClientError> {
         let client = reqwest::blocking::Client::new();

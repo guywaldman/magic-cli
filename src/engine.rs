@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -18,8 +16,8 @@ pub struct SuggestedCommand {
 
 #[derive(Error, Debug)]
 pub enum EngineError {
-    #[error("General error: {0}")]
-    GeneralError(String),
+    // #[error("General error: {0}")]
+    // GeneralError(String),
 }
 
 impl Engine {
