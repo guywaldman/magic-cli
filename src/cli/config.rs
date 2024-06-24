@@ -62,7 +62,7 @@ pub enum CliConfigError {
 
 impl CliConfig {
     pub fn load_config() -> Result<CliConfig, CliConfigError> {
-        let config_path = Self::get_config_path()?;
+        let config_path = Self::get_config_file_path()?;
         if !config_path.exists() {
             // Config doesn't exist - create it with default values.
             println!(
@@ -82,22 +82,28 @@ impl CliConfig {
         Ok(deserialized_config)
     }
 
-    pub fn get_config_path() -> Result<PathBuf, CliConfigError> {
-        let home = home_dir().unwrap();
-        let config_path = home.join(".config").join("magic_cli.json");
+    pub fn get_config_file_path() -> Result<PathBuf, CliConfigError> {
+        let config_dir_path = Self::get_config_dir_path()?;
+        let config_path = config_dir_path.join("config.json");
         Ok(config_path)
+    }
+
+    fn get_config_dir_path() -> Result<PathBuf, CliConfigError> {
+        let home = home_dir().unwrap();
+        let config_dir_path = home.join(".config").join("magic_cli");
+        Ok(config_dir_path)
     }
 
     pub fn reset() -> Result<(), CliConfigError> {
         let default_config = CliConfig::default();
         let serialized_config = serde_json::to_string(&default_config).map_err(|e| CliConfigError::ParsingError(e.to_string()))?;
-        std::fs::write(Self::get_config_path()?, serialized_config).map_err(|e| CliConfigError::IoError(e.to_string()))?;
+        std::fs::write(Self::get_config_file_path()?, serialized_config).map_err(|e| CliConfigError::IoError(e.to_string()))?;
         Ok(())
     }
 
     pub fn get(key: &str) -> Result<String, CliConfigError> {
         // TODO: Make this generic (potentially support JSON path syntax).
-        let config_path = Self::get_config_path()?;
+        let config_path = Self::get_config_file_path()?;
         let config_content = std::fs::read_to_string(config_path).map_err(|e| CliConfigError::IoError(e.to_string()))?;
         let deserialized_config: serde_json::Value =
             serde_json::from_str(&config_content).map_err(|e| CliConfigError::ParsingError(e.to_string()))?;
@@ -112,7 +118,7 @@ impl CliConfig {
     }
 
     pub fn set(key: &str, value: &str) -> Result<(), CliConfigError> {
-        let config_path = Self::get_config_path()?;
+        let config_path = Self::get_config_file_path()?;
         let mut config = Self::load_config()?.clone();
 
         // TODO: This is manual and error-prone, should make this generic (potentially support JSON path syntax).

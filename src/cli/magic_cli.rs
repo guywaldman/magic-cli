@@ -86,7 +86,7 @@ impl MagicCli {
                     println!("{}", "Configuration reset to default values.".green().bold());
                 }
                 ConfigSubcommands::Path => {
-                    let config = CliConfig::get_config_path()?;
+                    let config = CliConfig::get_config_file_path()?;
                     println!("{}", config.display());
                 }
             },
