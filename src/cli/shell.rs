@@ -10,9 +10,6 @@ pub enum ShellError {
     #[error("Failed to add command to shell history")]
     FailedToAddCommandToHistory,
 
-    #[error("Failed to retrieve shell history")]
-    FailedToRetrieveShellHistory,
-
     #[error("Unknown shell type")]
     UnknownShellType,
 
