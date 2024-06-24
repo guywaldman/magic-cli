@@ -10,6 +10,7 @@ pub struct OllamaApiModelsMetadata {
 /// Response item from the Ollama API for obtaining information about local models.
 ///
 /// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#response-22).
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct OllamaApiModelMetadata {
     /// The name of the model (e.g., "mistral:latest")
@@ -34,6 +35,7 @@ pub struct OllamaApiModelMetadata {
 /// Details about a running model in the API for listing running models (`GET /api/ps`).
 ///
 /// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#response-22).
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct OllamaApiModelDetails {
     /// Model identifier that this model is based on
@@ -55,6 +57,7 @@ pub struct OllamaApiModelDetails {
 /// Request for generating a response from the Ollama API.
 ///
 /// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#generate-a-completion).
+#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 pub struct OllamaGenerateRequest {
     /// Model identifier (e.g., "mistral:latest")
@@ -81,6 +84,7 @@ pub struct OllamaGenerateRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct OllamaGenerateResponse {
     /// Model identifier (e.g., "mistral:latest")
     pub model: String,
