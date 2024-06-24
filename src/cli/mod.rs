@@ -1,5 +1,5 @@
 mod config;
-mod explain_subcommand;
+mod explain;
 mod magic_cli;
 mod shell;
 

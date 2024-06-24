@@ -3,7 +3,7 @@ use std::{error::Error, process::exit};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 
-use super::{config::CliConfig, explain_subcommand::ExplainSubcommand};
+use super::{config::CliConfig, explain::ExplainSubcommand};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
