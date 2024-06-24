@@ -3,6 +3,7 @@ use std::{
     path::PathBuf,
 };
 
+use colored::Colorize;
 use home::home_dir;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -17,25 +18,27 @@ pub enum CommandSuggestMode {
     Execution,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for CommandSuggestMode {
+    fn default() -> Self {
+        Self::Clipboard
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SuggestConfig {
+    pub mode: CommandSuggestMode,
+    pub add_to_history: bool,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CliConfig {
     #[serde(rename = "ollama")]
     pub ollama_config: OllamaConfig,
-    pub suggest_mode: CommandSuggestMode,
+    pub suggest: SuggestConfig,
 }
 
 impl Display for CliConfig {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", serde_json::to_string_pretty(&self).unwrap())
-    }
-}
-
-impl Default for CliConfig {
-    fn default() -> Self {
-        Self {
-            ollama_config: Default::default(),
-            suggest_mode: CommandSuggestMode::Clipboard,
-        }
     }
 }
 
@@ -62,9 +65,15 @@ impl CliConfig {
         let config_path = Self::get_config_path()?;
         if !config_path.exists() {
             // Config doesn't exist - create it with default values.
+            println!(
+                "{} '{}'.",
+                "Configuration file not found, creating default configuration file at path".yellow(),
+                config_path.to_str().unwrap().yellow()
+            );
             let config = CliConfig::default();
             let serialized_config = serde_json::to_string(&config).map_err(|e| CliConfigError::ParsingError(e.to_string()))?;
             std::fs::write(config_path, serialized_config).map_err(|e| CliConfigError::IoError(e.to_string()))?;
+            println!("{}", "Default configuration file created successfully.".green());
             return Ok(config);
         }
         let deserialized_config =
@@ -108,8 +117,8 @@ impl CliConfig {
 
         // TODO: This is manual and error-prone, should make this generic (potentially support JSON path syntax).
         match key {
-            "suggest_mode" => {
-                config.suggest_mode = match value {
+            "suggest.mode" => {
+                config.suggest.mode = match value {
                     "clipboard" => CommandSuggestMode::Clipboard,
                     "unsafe-execution" => CommandSuggestMode::Execution,
                     _ => return Err(CliConfigError::InvalidConfigValue(key.to_string())),

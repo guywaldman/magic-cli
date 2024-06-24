@@ -86,7 +86,7 @@ impl ExplainSubcommand {
     }
 
     fn finalize_command_suggestion(&self, command: &str) -> Result<Option<i32>, Box<dyn Error>> {
-        match self.config.suggest_mode {
+        match self.config.suggest.mode {
             CommandSuggestMode::Clipboard => {
                 let confirm = Confirm::new("Copy to clipboard?").with_default(true).prompt();
                 match confirm {
