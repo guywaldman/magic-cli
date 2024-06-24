@@ -42,7 +42,7 @@ impl OllamaApiClient {
         let client = reqwest::blocking::Client::new();
         let url = format!("{}/api/generate", self.config.base_url);
         let body = OllamaGenerateRequest {
-            model: self.config.active_model_id.clone(),
+            model: self.config.model.to_string(),
             prompt: prompt.to_string(),
             stream: Some(false),
             format: Some("json".to_string()),
@@ -75,7 +75,7 @@ impl OllamaApiClient {
     // /// Lists the local models in the Ollama API.
     // ///
     // /// # Returns
-    // ///     
+    // ///
     // /// A [Result] containing the list of local models or an error if there was a problem.
     // pub fn list_local_models(&self) -> Result<OllamaApiModelsMetadata, OllamaApiClientError> {
     //     let response = self.get_from_ollama_api("api/tags")?;

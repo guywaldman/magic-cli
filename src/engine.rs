@@ -21,8 +21,8 @@ pub enum EngineError {
 }
 
 impl Engine {
-    pub fn new(client: OllamaApiClient) -> Self {
-        Self { ollama_client: client }
+    pub fn new(ollama_client: OllamaApiClient) -> Self {
+        Self { ollama_client }
     }
 
     pub fn suggest_command(&self, prompt: &str) -> Result<SuggestedCommand, EngineError> {

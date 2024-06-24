@@ -2,11 +2,10 @@ mod cli;
 mod engine;
 mod ollama;
 
-use cli::{Cli, CliConfig};
+use cli::MagicCli;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = CliConfig::load_config()?;
-    let cli = Cli::new(config);
-    cli.run(std::env::args()).unwrap();
+    let cli = MagicCli;
+    cli.run(std::env::args())?;
     Ok(())
 }
