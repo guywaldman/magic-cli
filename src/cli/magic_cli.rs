@@ -1,9 +1,8 @@
-use std::{boxed, error::Error, process::exit};
+use std::{error::Error, process::exit};
 
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 
-use crate::cli::config::CliConfigError;
 
 use super::{config::CliConfig, explain_subcommand::ExplainSubcommand};
 
