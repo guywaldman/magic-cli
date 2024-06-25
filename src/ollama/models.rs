@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// Response from the Ollama API for obtaining information about local models.
 /// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#list-running-models).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OllamaApiModelsMetadata {
     pub models: Vec<OllamaApiModelMetadata>,
 }
@@ -11,7 +11,7 @@ pub struct OllamaApiModelsMetadata {
 ///
 /// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#response-22).
 #[allow(dead_code)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OllamaApiModelMetadata {
     /// The name of the model (e.g., "mistral:latest")
     pub name: String,
@@ -36,7 +36,7 @@ pub struct OllamaApiModelMetadata {
 ///
 /// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#response-22).
 #[allow(dead_code)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OllamaApiModelDetails {
     /// Model identifier that this model is based on
     pub parent_model: String,
@@ -58,7 +58,7 @@ pub struct OllamaApiModelDetails {
 ///
 /// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#generate-a-completion).
 #[allow(dead_code)]
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct OllamaGenerateRequest {
     /// Model identifier (e.g., "mistral:latest")
     pub model: String,
@@ -83,7 +83,7 @@ pub struct OllamaGenerateRequest {
     pub keep_alive: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct OllamaGenerateResponse {
     /// Model identifier (e.g., "mistral:latest")
