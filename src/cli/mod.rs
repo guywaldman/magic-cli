@@ -1,4 +1,6 @@
+mod command;
 mod config;
-mod magic_cli;
+mod mcli;
+mod search;
 
-pub(crate) use magic_cli::*;
+pub(crate) use mcli::*;

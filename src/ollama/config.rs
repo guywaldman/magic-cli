@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct OllamaConfig {
     pub base_url: String,
     pub model: String,
+    pub embedding_model: String,
 }
 
 impl Default for OllamaConfig {
@@ -11,6 +12,7 @@ impl Default for OllamaConfig {
         Self {
             base_url: "http://localhost:11434".to_string(),
             model: "codestral:latest".to_string(),
+            embedding_model: "nomic-embed-text:latest".to_string(),
         }
     }
 }

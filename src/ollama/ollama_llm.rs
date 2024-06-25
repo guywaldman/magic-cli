@@ -4,7 +4,7 @@ use crate::core::Llm;
 
 use super::{
     config::OllamaConfig,
-    models::{OllamaApiModelsMetadata, OllamaGenerateRequest, OllamaGenerateResponse},
+    models::{OllamaApiModelsMetadata, OllamaEmbeddingsRequest, OllamaEmbeddingsResponse, OllamaGenerateRequest, OllamaGenerateResponse},
 };
 
 #[derive(Debug, Clone)]
@@ -66,6 +66,32 @@ impl OllamaLocalLlm {
         Ok(response.response)
     }
 
+    /// Generates an embedding from the Ollama API.
+    ///
+    /// # Arguments
+    /// * `prompt` - The item to generate an embedding for.
+    ///
+    /// # Returns
+    ///
+    /// A [Result] containing the embedding or an error if there was a problem.
+    fn generate_embedding(&self, prompt: &str) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        let client = reqwest::blocking::Client::new();
+        let url = format!("{}/api/embeddings", self.config.base_url);
+        let body = OllamaEmbeddingsRequest {
+            model: self.config.embedding_model.to_string(),
+            prompt: prompt.to_string(),
+        };
+        let response = client
+            .post(url)
+            .body(serde_json::to_string(&body).map_err(|e| OllamaLocalLlmError::Serialization(e.to_string()))?)
+            .send()
+            .map_err(|e| OllamaLocalLlmError::ApiUnavailable(e.to_string()))?;
+        let body = response.text().map_err(|e| OllamaLocalLlmError::Api(e.to_string()))?;
+        let response: OllamaEmbeddingsResponse = serde_json::from_str(&body).map_err(|e| OllamaLocalLlmError::Parsing(e.to_string()))?;
+
+        Ok(response.embedding)
+    }
+
     /// Lists the running models in the Ollama API.
     ///
     /// # Returns
@@ -113,6 +139,11 @@ impl Llm for OllamaLocalLlm {
         let response = self.generate(prompt, system_prompt)?;
         Ok(response)
     }
+
+    fn generate_embedding(&self, item: &str) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        let response = self.generate_embedding(item)?;
+        Ok(response)
+    }
 }
 
 #[cfg(test)]
@@ -154,6 +185,7 @@ mod tests {
         let ollama_config = OllamaConfig {
             base_url: mock_server.base_url(),
             model: "mockstral:latest".to_string(),
+            embedding_model: "mockembed:latest".to_string(),
         };
 
         let ollama = OllamaLocalLlm::new(ollama_config.clone());
@@ -185,6 +217,7 @@ mod tests {
         let ollama_config = OllamaConfig {
             base_url: mock_server.base_url(),
             model: "mockstral:latest".to_string(),
+            embedding_model: "mockembed:latest".to_string(),
         };
         let ollama = OllamaLocalLlm::new(ollama_config.clone());
 

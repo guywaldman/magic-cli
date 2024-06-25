@@ -1,5 +1,11 @@
 use colored::Colorize;
-use std::process::Command;
+use home::home_dir;
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+    path::PathBuf,
+    process::Command,
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -9,6 +15,9 @@ pub enum ShellError {
 
     #[error("Failed to add command to shell history")]
     FailedToAddCommandToHistory,
+
+    #[error("Failed to read shell history")]
+    FailedToReadShellHistory,
 
     #[error("Unknown shell type")]
     UnknownShellType,
@@ -40,10 +49,16 @@ impl ShellType {
         }
     }
 
-    fn history_file_name(&self) -> &str {
+    fn history_file_path(&self) -> PathBuf {
         match self {
-            ShellType::Zsh => "~/.zsh_history",
-            ShellType::Bash => "~/.bash_history",
+            ShellType::Zsh | ShellType::Bash => {
+                let home_dir = home_dir().unwrap();
+                let history_file_name = match self {
+                    ShellType::Zsh => ".zsh_history",
+                    ShellType::Bash => ".bash_history",
+                };
+                home_dir.join(history_file_name)
+            }
         }
     }
 }
@@ -58,7 +73,11 @@ impl Shell {
             ShellType::Zsh | ShellType::Bash => {
                 let mut child = Command::new(shell_type.command_name())
                     .arg("-c")
-                    .arg(format!("echo \"{}\" >> {}", command, shell_type.history_file_name()))
+                    .arg(format!(
+                        "echo \"{}\" >> {}",
+                        command,
+                        shell_type.history_file_path().to_str().unwrap()
+                    ))
                     .spawn()
                     .map_err(|e| ShellError::FailedToExecuteCommand(e.to_string()))?;
                 child.wait().map_err(|e| ShellError::FailedToExecuteCommand(e.to_string()))?
@@ -78,6 +97,22 @@ impl Shell {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn get_shell_history() -> Result<Vec<String>, ShellError> {
+        let shell_type = Self::current_shell_type()?;
+        let resp = match shell_type {
+            ShellType::Zsh | ShellType::Bash => {
+                let history_file_path = shell_type.history_file_path();
+                let history_file = File::open(history_file_path).map_err(|_e| ShellError::FailedToReadShellHistory)?;
+                let reader = BufReader::new(history_file);
+                reader
+                    .lines()
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|_e| ShellError::FailedToReadShellHistory)?
+            }
+        };
+        Ok(resp)
     }
 
     fn current_shell_type() -> Result<ShellType, ShellError> {

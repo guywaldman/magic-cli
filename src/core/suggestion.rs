@@ -1,15 +1,9 @@
-use std::{
-    error::Error,
-    process::{exit, Command},
-};
-
-use clipboard::{ClipboardContext, ClipboardProvider};
 use colored::Colorize;
-use inquire::{Confirm, Text};
+use inquire::Text;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::{llm::Llm, shell::Shell};
+use super::llm::Llm;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SuggestMode {
@@ -42,9 +36,6 @@ pub enum SuggestionEngineError {
     #[error("Generation error: {0}")]
     Generation(String),
 
-    #[error("Command finalization error: {0}")]
-    CommandFinalization(String),
-
     #[error("Serialization or deserialization error: {0}")]
     Serialization(String),
 }
@@ -52,18 +43,14 @@ pub enum SuggestionEngineError {
 #[derive(Debug)]
 pub struct SuggestionEngine<T: Llm> {
     llm: T,
-    config: SuggestConfig,
 }
 
 impl<T: Llm> SuggestionEngine<T> {
-    pub fn new(llm: T, suggest_config: SuggestConfig) -> Self {
-        Self {
-            llm,
-            config: suggest_config,
-        }
+    pub fn new(llm: T) -> Self {
+        Self { llm }
     }
 
-    pub fn suggest_command(&self, prompt: &str) -> Result<(), SuggestionEngineError> {
+    pub fn suggest_command(&self, prompt: &str) -> Result<String, SuggestionEngineError> {
         println!(
             "{} {}",
             "Generating suggested command for prompt".dimmed(),
@@ -103,14 +90,7 @@ impl<T: Llm> SuggestionEngine<T> {
 
         command = self.populate_placeholders_in_command(&command);
 
-        if let Some(exit_code) = self
-            .finalize_command_suggestion(&command)
-            .map_err(|e| SuggestionEngineError::CommandFinalization(e.to_string()))?
-        {
-            exit(exit_code);
-        }
-
-        Ok(())
+        Ok(command)
     }
 
     pub(crate) fn generate_suggested_command(&self, prompt: &str) -> Result<SuggestedCommand, SuggestionEngineError> {
@@ -161,79 +141,6 @@ impl<T: Llm> SuggestionEngine<T> {
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
         let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
         Ok(parsed_response)
-    }
-
-    fn finalize_command_suggestion(&self, command: &str) -> Result<Option<i32>, Box<dyn Error>> {
-        match self.config.mode {
-            SuggestMode::Clipboard => {
-                let confirm = Confirm::new("Copy to clipboard?").with_default(true).prompt();
-                match confirm {
-                    Ok(true) => {
-                        let mut clipboard_context = ClipboardContext::new()?;
-                        clipboard_context.set_contents(command.to_string())?;
-                        println!("{}", "Command copied to clipboard".green().bold());
-                    }
-                    Ok(false) => println!("{}", "Suggested command not copied to clipboard".red()),
-                    Err(e) => println!("{}", e.to_string().red()),
-                }
-            }
-            SuggestMode::Execution => {
-                let confirm = Confirm::new(&format!("Execute command '{}'?", command.blue().bold()))
-                    .with_default(true)
-                    .with_help_message(&format!(
-                        "{}",
-                        "WARNING: This will execute the command in the current session, please make sure that it is safe to do so"
-                            .red()
-                            .bold()
-                    ))
-                    .prompt();
-
-                match confirm {
-                    Ok(false) => return Ok(None),
-                    Ok(true) => {}
-                    Err(e) => println!("{}", e.to_string().red()),
-                }
-
-                let split_command = command.split_whitespace().collect::<Vec<_>>();
-                let child = Command::new(split_command[0])
-                    .args(&split_command[1..])
-                    .spawn()
-                    .expect("Failed to execute command");
-
-                let output = child.wait_with_output().expect("Failed to wait for command");
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                let status = output.status;
-
-                if self.config.add_to_history {
-                    Shell::add_command_to_history(command)?;
-                }
-
-                if !status.success() {
-                    println!(
-                        "{}",
-                        format!("Command `{}` failed with status code {}", command.italic(), status.code().unwrap())
-                            .red()
-                            .bold()
-                    );
-                    if !stdout.is_empty() {
-                        println!("stdout:\n{}\n", stderr);
-                    }
-                    if !stderr.is_empty() {
-                        println!("stderr:\n{}\n", stdout);
-                    }
-                    return Ok(None);
-                }
-
-                if !stdout.is_empty() {
-                    println!("stdout:\n{}\n", stderr);
-                }
-                if !stderr.is_empty() {
-                    println!("stderr:\n{}\n", stdout);
-                }
-            }
-        }
-        Ok(None)
     }
 
     fn populate_placeholders_in_command(&self, command: &str) -> String {
@@ -303,14 +210,11 @@ mod tests {
         let ollama_config = OllamaConfig {
             base_url: mock_server.base_url(),
             model: "mockstral:latest".to_string(),
-        };
-        let suggest_config = SuggestConfig {
-            mode: SuggestMode::Clipboard,
-            add_to_history: false,
+            embedding_model: "mockembed:latest".to_string(),
         };
 
         let ollama = OllamaLocalLlm::new(ollama_config.clone());
-        let suggestion_engine = SuggestionEngine::new(ollama.clone(), suggest_config);
+        let suggestion_engine = SuggestionEngine::new(ollama.clone());
 
         let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt");
         mock_generation_api.assert();
