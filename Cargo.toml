@@ -1,6 +1,7 @@
 [package]
 name = "magic-cli"
 version = "0.1.0"
+repository = "https://github.com/guywaldman/magic-cli"
 edition = "2021"
 
 [dependencies]
@@ -21,3 +22,21 @@ tokio = "1.38.0"
 
 [dev-dependencies]
 chrono = "0.4.38"
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.16.0"
+# The installers to generate for each app
+installers = []
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# CI backends to support
+ci = "github"
+# Publish jobs to run in CI
+pr-run-mode = "plan"
