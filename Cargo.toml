@@ -8,6 +8,7 @@ chrono = "0.4.38"
 clap = { version = "4.5.7", features = ["derive"] }
 clipboard = "0.5.0"
 colored = "2.1.0"
+const_format = "0.2.32"
 home = "0.5.9"
 httpmock = "0.7.0"
 inquire = "0.7.5"

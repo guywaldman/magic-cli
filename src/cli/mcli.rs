@@ -2,6 +2,7 @@ use super::{command::CliCommand, config::CliConfig, search::CliSearch};
 use crate::{core::SuggestionEngine, ollama::ollama_llm::OllamaLocalLlm};
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
+use const_format::concatcp;
 use std::{error::Error, process::exit};
 
 #[derive(Parser)]
@@ -34,12 +35,22 @@ enum Commands {
     },
 }
 
+const KEY_HELP: &str = "Supported keys:
+    - suggest.mode: The mode to use for suggesting commands (supported values: \"clipboard\" for copying to clipboard, \"unsafe-execution\" for executing commands in the current shell session).
+    - suggest.add_to_history: Whether to add the suggested command to the shell history (supported values: \"true\", \"false\").
+    - ollama.base_url: The base URL of the Ollama API.
+    - ollama.model: The model to use for generating responses.
+    - ollama.embedding_model: The model to use for generating embeddings.";
+
+const SET_KEY_HELP: &str = concatcp!("Sets a key in the configuration.\n", KEY_HELP);
+const GET_KEY_HELP: &str = concatcp!("Gets a key from the configuration.\n", KEY_HELP);
+
 #[derive(Subcommand)]
 enum ConfigSubcommands {
     /// Set a value.
     Set {
-        /// The key to set.
-        #[arg(short, long)]
+        /// The key to set in the configuration.
+        #[arg(short, long, long_help=SET_KEY_HELP)]
         key: String,
         /// The value to set.
         #[arg(short, long)]
@@ -47,8 +58,8 @@ enum ConfigSubcommands {
     },
     /// Get a value.
     Get {
-        /// The key to get.
-        #[arg()]
+        /// The key to get from the configuration.
+        #[arg(long_help=GET_KEY_HELP)]
         key: String,
     },
     /// List the configurations.
