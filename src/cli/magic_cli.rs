@@ -3,7 +3,9 @@ use std::{error::Error, process::exit};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 
-use super::{config::CliConfig, suggestion::SuggestionEngine};
+use crate::{core::SuggestionEngine, ollama::ollama_llm::OllamaLocalLlm};
+
+use super::config::CliConfig;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -59,7 +61,9 @@ impl MagicCli {
 
         match clap_cli.command {
             Commands::Explain { prompt } => {
-                let explain_subcommand = SuggestionEngine::new(CliConfig::load_config()?);
+                let config = CliConfig::load_config()?;
+                let llm = OllamaLocalLlm::new(config.ollama_config.clone());
+                let explain_subcommand = SuggestionEngine::new(llm, config.suggest);
                 explain_subcommand.suggest_command(&prompt)?;
             }
             Commands::Config { command } => match command {

@@ -1,4 +1,6 @@
 mod cli;
+mod core;
+mod db;
 mod ollama;
 
 use cli::MagicCli;

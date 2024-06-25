@@ -8,27 +8,11 @@ use home::home_dir;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::ollama::config::OllamaConfig;
+use crate::{
+    core::{SuggestConfig, SuggestMode},
+    ollama::config::OllamaConfig,
+};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CommandSuggestMode {
-    #[serde(rename = "clipboard")]
-    Clipboard,
-    #[serde(rename = "unsafe-execution")]
-    Execution,
-}
-
-impl Default for CommandSuggestMode {
-    fn default() -> Self {
-        Self::Clipboard
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct SuggestConfig {
-    pub mode: CommandSuggestMode,
-    pub add_to_history: bool,
-}
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CliConfig {
     #[serde(rename = "ollama")]
@@ -125,8 +109,8 @@ impl CliConfig {
         match key {
             "suggest.mode" => {
                 config.suggest.mode = match value {
-                    "clipboard" => CommandSuggestMode::Clipboard,
-                    "unsafe-execution" => CommandSuggestMode::Execution,
+                    "clipboard" => SuggestMode::Clipboard,
+                    "unsafe-execution" => SuggestMode::Execution,
                     _ => return Err(CliConfigError::InvalidConfigValue(key.to_string())),
                 }
             }

@@ -9,17 +9,26 @@ use inquire::{Confirm, Text};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::ollama::{client::OllamaApiClient, models::OllamaApiModelsMetadata};
+use super::{llm::Llm, shell::Shell};
 
-use super::{
-    config::{CliConfig, CommandSuggestMode},
-    shell::Shell,
-};
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SuggestMode {
+    #[serde(rename = "clipboard")]
+    Clipboard,
+    #[serde(rename = "unsafe-execution")]
+    Execution,
+}
 
-#[derive(Debug)]
-pub struct SuggestionEngine {
-    ollama_client: OllamaApiClient,
-    config: CliConfig,
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SuggestConfig {
+    pub mode: SuggestMode,
+    pub add_to_history: bool,
+}
+
+impl Default for SuggestMode {
+    fn default() -> Self {
+        Self::Clipboard
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,9 +42,6 @@ pub enum SuggestionEngineError {
     #[error("Generation error: {0}")]
     Generation(String),
 
-    #[error("Model listing error: {0}")]
-    ModelListing(String),
-
     #[error("Command finalization error: {0}")]
     CommandFinalization(String),
 
@@ -43,26 +49,21 @@ pub enum SuggestionEngineError {
     Serialization(String),
 }
 
-impl SuggestionEngine {
-    pub fn new(config: CliConfig) -> Self {
-        let ollama_client = OllamaApiClient::new(config.ollama_config.clone());
-        Self { ollama_client, config }
-    }
+#[derive(Debug)]
+pub struct SuggestionEngine<T: Llm> {
+    llm: T,
+    config: SuggestConfig,
+}
 
-    pub fn preamble(&self) -> Result<(), SuggestionEngineError> {
-        let running_models = self.list_running_models()?;
-        if running_models.models.is_empty() {
-            println!(
-                "{}",
-                "No running Ollama models, response may take longer than usual to generate.".yellow()
-            );
+impl<T: Llm> SuggestionEngine<T> {
+    pub fn new(llm: T, suggest_config: SuggestConfig) -> Self {
+        Self {
+            llm,
+            config: suggest_config,
         }
-        Ok(())
     }
 
     pub fn suggest_command(&self, prompt: &str) -> Result<(), SuggestionEngineError> {
-        self.preamble()?;
-
         println!(
             "{} {}",
             "Generating suggested command for prompt".dimmed(),
@@ -112,14 +113,6 @@ impl SuggestionEngine {
         Ok(())
     }
 
-    pub(crate) fn list_running_models(&self) -> Result<OllamaApiModelsMetadata, SuggestionEngineError> {
-        let response = self
-            .ollama_client
-            .list_running_models()
-            .map_err(|e| SuggestionEngineError::ModelListing(e.to_string()))?;
-        Ok(response)
-    }
-
     pub(crate) fn generate_suggested_command(&self, prompt: &str) -> Result<SuggestedCommand, SuggestionEngineError> {
         const SYSTEM_PROMPT: &str = "
         You are a an assistant that provides suggestions for a command to
@@ -131,7 +124,7 @@ impl SuggestionEngine {
         ";
 
         let response = self
-            .ollama_client
+            .llm
             .generate(prompt, SYSTEM_PROMPT)
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
         let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
@@ -163,7 +156,7 @@ impl SuggestionEngine {
         );
 
         let response = self
-            .ollama_client
+            .llm
             .generate(&prompt, SYSTEM_PROMPT)
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
         let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
@@ -171,8 +164,8 @@ impl SuggestionEngine {
     }
 
     fn finalize_command_suggestion(&self, command: &str) -> Result<Option<i32>, Box<dyn Error>> {
-        match self.config.suggest.mode {
-            CommandSuggestMode::Clipboard => {
+        match self.config.mode {
+            SuggestMode::Clipboard => {
                 let confirm = Confirm::new("Copy to clipboard?").with_default(true).prompt();
                 match confirm {
                     Ok(true) => {
@@ -184,7 +177,7 @@ impl SuggestionEngine {
                     Err(e) => println!("{}", e.to_string().red()),
                 }
             }
-            CommandSuggestMode::Execution => {
+            SuggestMode::Execution => {
                 let confirm = Confirm::new(&format!("Execute command '{}'?", command.blue().bold()))
                     .with_default(true)
                     .with_help_message(&format!(
@@ -212,7 +205,9 @@ impl SuggestionEngine {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 let status = output.status;
 
-                Shell::add_command_to_history(command)?;
+                if self.config.add_to_history {
+                    Shell::add_command_to_history(command)?;
+                }
 
                 if !status.success() {
                     println!(
@@ -281,40 +276,20 @@ impl SuggestionEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ollama::models::{OllamaApiModelDetails, OllamaApiModelMetadata, OllamaApiModelsMetadata, OllamaGenerateResponse};
-    use httpmock::{
-        Method::{GET, POST},
-        MockServer,
-    };
+    use crate::ollama::{config::OllamaConfig, models::OllamaGenerateResponse, ollama_llm::OllamaLocalLlm};
+    use httpmock::{Method::POST, MockServer};
 
     #[test]
     fn test_simple_suggestion() {
-        let now = chrono::Utc::now().to_rfc3339();
         let mock_generation_response = OllamaGenerateResponse {
             model: "mockstral:latest".to_string(),
-            created_at: now.clone(),
+            created_at: "2024-06-25T01:40:42.192756+00:00".to_string(),
             response: serde_json::to_string(&SuggestedCommand {
                 command: "Mock command".to_string(),
                 explanation: "Mock command explanation".to_string(),
             })
             .unwrap(),
             total_duration: 12345,
-        };
-        let mock_list_models_response = OllamaApiModelsMetadata {
-            models: vec![OllamaApiModelMetadata {
-                name: "mockstral:latest".to_string(),
-                model: "mockstral:latest".to_string(),
-                size: 12569170041,
-                digest: "fcc0019dcee9947fe4298e23825eae643f4670e391f205f8c55a64c2068e9a22".to_string(),
-                expires_at: None,
-                details: OllamaApiModelDetails {
-                    parent_model: "".to_string(),
-                    format: "gguf".to_string(),
-                    parameter_size: "7.2B".to_string(),
-                    quantization_level: "Q4_0".to_string(),
-                    family: "ollama".to_string(),
-                },
-            }],
         };
 
         let mock_server = MockServer::start();
@@ -324,25 +299,18 @@ mod tests {
                 .header("Content-Type", "application/json")
                 .body(serde_json::to_string(&mock_generation_response).unwrap());
         });
-        let mock_list_models_api = mock_server.mock(|when, then| {
-            when.method(GET).path("/api/ps");
-            then.status(200)
-                .header("Content-Type", "application/json")
-                .body(serde_json::to_string(&mock_list_models_response).unwrap());
-        });
 
-        let mut cli_config = CliConfig::default();
-        cli_config.ollama_config.base_url = mock_server.base_url();
+        let ollama_config = OllamaConfig {
+            base_url: mock_server.base_url(),
+            model: "mockstral:latest".to_string(),
+        };
+        let suggest_config = SuggestConfig {
+            mode: SuggestMode::Clipboard,
+            add_to_history: false,
+        };
 
-        let suggestion_engine = SuggestionEngine::new(cli_config);
-
-        let running_models = suggestion_engine.list_running_models();
-        mock_list_models_api.assert();
-        assert!(running_models.is_ok());
-        let running_models = running_models.unwrap();
-        assert!(running_models.models.len() == 1);
-        let model = running_models.models.first().unwrap();
-        assert_eq!(model.name, mock_list_models_response.models.first().unwrap().name);
+        let ollama = OllamaLocalLlm::new(ollama_config.clone());
+        let suggestion_engine = SuggestionEngine::new(ollama.clone(), suggest_config);
 
         let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt");
         mock_generation_api.assert();
