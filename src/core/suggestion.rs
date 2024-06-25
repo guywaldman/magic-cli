@@ -50,6 +50,17 @@ impl<T: Llm> SuggestionEngine<T> {
         Self { llm }
     }
 
+    /// Suggests a command based on the given prompt.
+    ///
+    /// # Arguments
+    ///
+    /// * `prompt` - The prompt to use for generating the command suggestion.
+    ///
+    /// # Returns
+    ///
+    /// A [Result] containing the generated command suggestion or an error if there was a problem.
+    ///
+    // TODO: Move all CLI-related logic to the `cli` module.
     pub fn suggest_command(&self, prompt: &str) -> Result<String, SuggestionEngineError> {
         println!(
             "{} {}",
