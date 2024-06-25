@@ -1,11 +1,11 @@
 mod cli;
-mod engine;
 mod ollama;
 
 use cli::MagicCli;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = MagicCli;
-    cli.run(std::env::args())?;
+    let args: Vec<String> = std::env::args().collect();
+    cli.run(&args)?;
     Ok(())
 }

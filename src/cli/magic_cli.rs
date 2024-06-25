@@ -3,7 +3,7 @@ use std::{error::Error, process::exit};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 
-use super::{config::CliConfig, explain_subcommand::ExplainSubcommand};
+use super::{config::CliConfig, suggestion::SuggestionEngine};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -54,13 +54,13 @@ enum ConfigSubcommands {
 pub struct MagicCli;
 
 impl MagicCli {
-    pub fn run(&self, args: std::env::Args) -> Result<(), Box<dyn Error>> {
+    pub fn run(&self, args: &[String]) -> Result<(), Box<dyn Error>> {
         let clap_cli = ClapCli::parse_from(args);
 
         match clap_cli.command {
             Commands::Explain { prompt } => {
-                let explain_subcommand = ExplainSubcommand::new(CliConfig::load_config()?);
-                explain_subcommand.explain_subcommand(&prompt)?;
+                let explain_subcommand = SuggestionEngine::new(CliConfig::load_config()?);
+                explain_subcommand.suggest_command(&prompt)?;
             }
             Commands::Config { command } => match command {
                 ConfigSubcommands::Set { key, value } => match CliConfig::set(&key, &value) {
