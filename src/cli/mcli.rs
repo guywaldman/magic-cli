@@ -1,5 +1,5 @@
 use super::{command::CliCommand, config::CliConfig, search::CliSearch};
-use crate::{core::SuggestionEngine, ollama::ollama_llm::OllamaLocalLlm};
+use crate::{core::SuggestionEngine, llm::ollama::ollama_llm::OllamaLocalLlm};
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use const_format::concatcp;

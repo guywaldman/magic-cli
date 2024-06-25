@@ -1,17 +1,13 @@
+use crate::core::{SuggestConfig, SuggestMode};
+use crate::llm::ollama::config::OllamaConfig;
+use colored::Colorize;
+use home::home_dir;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
     path::PathBuf,
 };
-
-use colored::Colorize;
-use home::home_dir;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-use crate::{
-    core::{SuggestConfig, SuggestMode},
-    ollama::config::OllamaConfig,
-};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CliConfig {

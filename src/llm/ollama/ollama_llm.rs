@@ -148,8 +148,9 @@ impl Llm for OllamaLocalLlm {
 
 #[cfg(test)]
 mod tests {
+    use crate::llm::ollama::models::{OllamaApiModelDetails, OllamaApiModelMetadata};
+
     use super::*;
-    use crate::ollama::models::{OllamaApiModelDetails, OllamaApiModelMetadata, OllamaApiModelsMetadata};
     use httpmock::{
         Method::{GET, POST},
         MockServer,

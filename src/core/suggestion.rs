@@ -193,8 +193,9 @@ impl<T: Llm> SuggestionEngine<T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::llm::ollama::{config::OllamaConfig, models::OllamaGenerateResponse, ollama_llm::OllamaLocalLlm};
+
     use super::*;
-    use crate::ollama::{config::OllamaConfig, models::OllamaGenerateResponse, ollama_llm::OllamaLocalLlm};
     use httpmock::{Method::POST, MockServer};
 
     #[test]

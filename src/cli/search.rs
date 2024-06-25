@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use crate::{
     core::{HayStackItem, IndexEngine, IndexError, IndexMetadata, SemanticSearchEngine, SemanticSearchEngineError, Shell, ShellError},
-    ollama::ollama_llm::OllamaLocalLlm,
+    llm::ollama::ollama_llm::OllamaLocalLlm,
 };
 
 use super::config::{CliConfig, CliConfigError};
