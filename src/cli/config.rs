@@ -1,5 +1,6 @@
 use crate::core::{SuggestConfig, SuggestMode};
 use crate::llm::ollama::config::OllamaConfig;
+use crate::llm::openai::config::OpenAiConfig;
 use colored::Colorize;
 use home::home_dir;
 use serde::{Deserialize, Serialize};
@@ -9,10 +10,27 @@ use std::{
 };
 use thiserror::Error;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LlmProvider {
+    #[serde(rename = "ollama")]
+    Ollama,
+    #[serde(rename = "openai")]
+    OpenAi,
+}
+
+impl Default for LlmProvider {
+    fn default() -> Self {
+        Self::Ollama
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CliConfig {
     #[serde(rename = "ollama")]
     pub ollama_config: OllamaConfig,
+    #[serde(rename = "openai")]
+    pub openai_config: OpenAiConfig,
+    llm: LlmProvider,
     pub suggest: SuggestConfig,
 }
 
@@ -118,6 +136,13 @@ impl CliConfig {
                     _ => return Err(CliConfigError::InvalidConfigValue(key.to_string())),
                 }
             }
+            "suggest.add_to_history" => {
+                config.suggest.add_to_history = match value {
+                    "true" => true,
+                    "false" => false,
+                    _ => return Err(CliConfigError::InvalidConfigValue(key.to_string())),
+                }
+            }
             "ollama.base_url" => {
                 config.ollama_config.base_url = value.to_string();
             }
@@ -128,7 +153,6 @@ impl CliConfig {
         }
 
         let serialized_config = serde_json::to_string(&config).map_err(|e| CliConfigError::ParsingError(e.to_string()))?;
-
         std::fs::write(config_path, serialized_config).map_err(CliConfigError::IoError)?;
         Ok(())
     }

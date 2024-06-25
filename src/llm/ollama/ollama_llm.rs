@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::core::Llm;
+use crate::core::{Llm, LlmError};
 
 use super::{
     config::OllamaConfig,
@@ -135,13 +135,17 @@ impl OllamaLocalLlm {
 }
 
 impl Llm for OllamaLocalLlm {
-    fn generate(&self, prompt: &str, system_prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let response = self.generate(prompt, system_prompt)?;
+    fn generate(&self, prompt: &str, system_prompt: &str) -> Result<String, LlmError> {
+        let response = self
+            .generate(prompt, system_prompt)
+            .map_err(|e| LlmError::TextGeneration(e.to_string()))?;
         Ok(response)
     }
 
-    fn generate_embedding(&self, item: &str) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-        let response = self.generate_embedding(item)?;
+    fn generate_embedding(&self, item: &str) -> Result<Vec<f32>, LlmError> {
+        let response = self
+            .generate_embedding(item)
+            .map_err(|e| LlmError::EmbeddingGeneration(e.to_string()))?;
         Ok(response)
     }
 }
