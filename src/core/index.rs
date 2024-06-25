@@ -3,7 +3,7 @@ use std::{path::PathBuf, time::SystemTime};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::core::{HayStackItem, IndexItem, Llm, SemanticSearchEngine, SemanticSearchEngineError};
+use crate::core::{HayStackItem, IndexItem, SemanticSearchEngine, SemanticSearchEngineError};
 
 #[derive(Debug, Error)]
 pub(crate) enum IndexError {
@@ -27,14 +27,14 @@ pub struct IndexMetadata {
     pub last_index_time: Option<SystemTime>,
 }
 
-pub(crate) struct IndexEngine<L: Llm> {
-    semantic_search_engine: SemanticSearchEngine<L>,
+pub(crate) struct IndexEngine {
+    semantic_search_engine: SemanticSearchEngine,
     index_path: PathBuf,
     index_metadata_path: PathBuf,
 }
 
-impl<L: Llm> IndexEngine<L> {
-    pub fn new(semantic_search_engine: SemanticSearchEngine<L>, index_path: PathBuf, index_metadata_path: PathBuf) -> Self {
+impl IndexEngine {
+    pub fn new(semantic_search_engine: SemanticSearchEngine, index_path: PathBuf, index_metadata_path: PathBuf) -> Self {
         Self {
             semantic_search_engine,
             index_path,

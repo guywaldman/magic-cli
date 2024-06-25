@@ -13,16 +13,33 @@ pub enum SuggestMode {
     Execution,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct SuggestConfig {
-    pub mode: SuggestMode,
-    pub add_to_history: bool,
+#[derive(Error, Debug)]
+pub enum SuggestModeError {
+    #[error("Invalid value: {0}")]
+    InvalidValue(String),
+}
+
+impl TryFrom<&str> for SuggestMode {
+    type Error = SuggestModeError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "clipboard" => Ok(SuggestMode::Clipboard),
+            "unsafe-execution" => Ok(SuggestMode::Execution),
+            _ => Err(SuggestModeError::InvalidValue(value.to_string())),
+        }
+    }
 }
 
 impl Default for SuggestMode {
     fn default() -> Self {
         Self::Clipboard
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SuggestConfig {
+    pub mode: SuggestMode,
+    pub add_to_history: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,13 +57,12 @@ pub enum SuggestionEngineError {
     Serialization(String),
 }
 
-#[derive(Debug)]
-pub struct SuggestionEngine<T: Llm> {
-    llm: T,
+pub struct SuggestionEngine {
+    llm: Box<dyn Llm>,
 }
 
-impl<T: Llm> SuggestionEngine<T> {
-    pub fn new(llm: T) -> Self {
+impl SuggestionEngine {
+    pub fn new(llm: Box<dyn Llm>) -> Self {
         Self { llm }
     }
 
@@ -220,13 +236,13 @@ mod tests {
         });
 
         let ollama_config = OllamaConfig {
-            base_url: mock_server.base_url(),
-            model: "mockstral:latest".to_string(),
-            embedding_model: "mockembed:latest".to_string(),
+            base_url: Some(mock_server.base_url()),
+            model: Some("mockstral:latest".to_string()),
+            embedding_model: Some("mockembed:latest".to_string()),
         };
 
         let ollama = OllamaLocalLlm::new(ollama_config.clone());
-        let suggestion_engine = SuggestionEngine::new(ollama.clone());
+        let suggestion_engine = SuggestionEngine::new(Box::new(ollama));
 
         let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt");
         mock_generation_api.assert();

@@ -1,3 +1,4 @@
+use dyn_clone::DynClone;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -12,7 +13,7 @@ pub enum LlmError {
     Configuration(String),
 }
 
-pub(crate) trait Llm {
+pub(crate) trait Llm: DynClone {
     /// Generates a response from the LLM.
     ///
     /// # Arguments

@@ -1,8 +1,15 @@
-use super::{command::CliCommand, config::CliConfig, search::CliSearch};
-use crate::{core::SuggestionEngine, llm::ollama::ollama_llm::OllamaLocalLlm};
+use super::{
+    command::CliCommand,
+    config::{self, CliConfig, LlmProvider},
+    search::CliSearch,
+};
+use crate::{
+    core::{Llm, SuggestionEngine},
+    llm::{ollama::ollama_llm::OllamaLocalLlm, openai::openai_llm::OpenAiLlm},
+};
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
-use const_format::concatcp;
+use inquire::Text;
 use std::{error::Error, process::exit};
 
 #[derive(Parser)]
@@ -35,32 +42,22 @@ enum Commands {
     },
 }
 
-const KEY_HELP: &str = "Supported keys:
-    - suggest.mode: The mode to use for suggesting commands (supported values: \"clipboard\" for copying to clipboard, \"unsafe-execution\" for executing commands in the current shell session).
-    - suggest.add_to_history: Whether to add the suggested command to the shell history (supported values: \"true\", \"false\").
-    - ollama.base_url: The base URL of the Ollama API.
-    - ollama.model: The model to use for generating responses.
-    - ollama.embedding_model: The model to use for generating embeddings.";
-
-const SET_KEY_HELP: &str = concatcp!("Sets a key in the configuration.\n", KEY_HELP);
-const GET_KEY_HELP: &str = concatcp!("Gets a key from the configuration.\n", KEY_HELP);
-
 #[derive(Subcommand)]
 enum ConfigSubcommands {
     /// Set a value.
     Set {
-        /// The key to set in the configuration.
-        #[arg(short, long, long_help=SET_KEY_HELP)]
-        key: String,
-        /// The value to set.
+        /// The key to set in the configuration. If not provided, you will be prompted to select one.
         #[arg(short, long)]
-        value: String,
+        key: Option<String>,
+        /// The value to set. If not provided, you will be prompted to enter a value.
+        #[arg(short, long)]
+        value: Option<String>,
     },
     /// Get a value.
     Get {
-        /// The key to get from the configuration.
-        #[arg(long_help=GET_KEY_HELP)]
-        key: String,
+        /// The key to get from the configuration. If not provided, you will be prompted to select one.
+        #[arg()]
+        key: Option<String>,
     },
     /// List the configurations.
     List,
@@ -79,7 +76,7 @@ impl MagicCli {
         match clap_cli.command {
             Commands::Suggest { prompt } => {
                 let config = CliConfig::load_config()?;
-                let llm = OllamaLocalLlm::new(config.ollama_config.clone());
+                let llm = self.llm(&config)?;
                 let explain_subcommand = SuggestionEngine::new(llm);
                 let command = explain_subcommand.suggest_command(&prompt)?;
                 if CliCommand::new(config.suggest).suggest_user_action_on_command(&command).is_err() {
@@ -87,24 +84,57 @@ impl MagicCli {
                 }
             }
             Commands::Config { command } => match command {
-                ConfigSubcommands::Set { key, value } => match CliConfig::set(&key, &value) {
-                    Ok(_) => println!("{}", "Configuration updated.".green().bold()),
-                    Err(err) => {
-                        eprintln!("{}", format!("CLI configuration error: {}", err).red().bold());
-                        exit(1);
+                ConfigSubcommands::Set { key, value } => {
+                    let key = match key {
+                        Some(key) => key,
+                        None => config::CliConfig::select_key()?,
+                    };
+                    let value = match value {
+                        Some(value) => value,
+                        None => Text::new(&format!("{} {}: ", "Enter the value for the key", key.magenta())).prompt()?,
+                    };
+
+                    match CliConfig::set(&key, &value) {
+                        Ok(_) => println!("{}", "Configuration updated.".green().bold()),
+                        Err(err) => {
+                            eprintln!("{}", format!("CLI configuration error: {}", err).red().bold());
+                            exit(1);
+                        }
                     }
-                },
-                ConfigSubcommands::Get { key } => match CliConfig::get(&key) {
-                    Ok(value) => println!("{}", value),
-                    Err(err) => {
-                        eprintln!("{}", format!("CLI configuration error: {}", err).red().bold());
-                        exit(1);
-                    }
-                },
-                ConfigSubcommands::List => {
-                    let config = CliConfig::load_config()?;
-                    println!("{}", config);
                 }
+                ConfigSubcommands::Get { key } => {
+                    let key = match key {
+                        Some(key) => key,
+                        None => config::CliConfig::select_key()?,
+                    };
+                    match CliConfig::get(&key) {
+                        Ok(value) => println!("{}", value),
+                        Err(err) => {
+                            eprintln!("{}", format!("CLI configuration error: {}", err).red().bold());
+                            exit(1);
+                        }
+                    }
+                }
+                ConfigSubcommands::List => {
+                    let config_keys = CliConfig::configuration_keys();
+                    let config_keys = config_keys.get().unwrap();
+                    let mut config_keys_sorted = config_keys.values().collect::<Vec<_>>();
+                    config_keys_sorted.sort_by(|a, b| a.key.cmp(&b.key));
+                    for (i, item) in config_keys_sorted.iter().enumerate() {
+                        let config_value = CliConfig::get(&item.key)?;
+                        let config_value = config_value.replace("null", "-");
+                        println!(
+                            "Field: {}\nValue: {}\nDescription: {}",
+                            item.key.blue().bold(),
+                            config_value.bold(),
+                            item.description.dimmed(),
+                        );
+                        if i < config_keys_sorted.len() - 1 {
+                            println!();
+                        }
+                    }
+                }
+
                 ConfigSubcommands::Reset => {
                     CliConfig::reset()?;
                     println!("{}", "Configuration reset to default values.".green().bold());
@@ -115,7 +145,9 @@ impl MagicCli {
                 }
             },
             Commands::Search { prompt, index } => {
-                let cli_search = CliSearch;
+                let config = CliConfig::load_config()?;
+                let llm = self.llm(&config)?;
+                let cli_search = CliSearch::new(llm);
                 let selected_command = cli_search.search_command(&prompt, index)?;
 
                 let config = CliConfig::load_config()?;
@@ -129,5 +161,12 @@ impl MagicCli {
         }
 
         Ok(())
+    }
+
+    fn llm(&self, config: &CliConfig) -> Result<Box<dyn Llm>, Box<dyn Error>> {
+        match config.llm {
+            LlmProvider::Ollama => Ok(Box::new(OllamaLocalLlm::new(config.ollama_config.clone()))),
+            LlmProvider::OpenAi => Ok(Box::new(OpenAiLlm::new(config.openai_config.clone()))),
+        }
     }
 }
