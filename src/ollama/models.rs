@@ -98,3 +98,26 @@ pub struct OllamaGenerateResponse {
     /// The duration of the response in nanoseconds
     pub total_duration: usize,
 }
+
+/// Request for generating an embedding from the Ollama API.
+/// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#generate-embeddings).
+///
+#[allow(dead_code)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct OllamaEmbeddingsRequest {
+    /// The string to generate an embedding for.
+    pub prompt: String,
+
+    /// The model to use for the embedding generation.
+    pub model: String,
+}
+
+/// Response from the Ollama API for generating an embedding.
+/// Referenced from the Ollama API documentation [here](https://github.com/ollama/ollama/blob/fedf71635ec77644f8477a86c6155217d9213a11/docs/api.md#generate-embeddings).
+///
+#[allow(dead_code)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OllamaEmbeddingsResponse {
+    /// The embedding for the prompt.
+    pub embedding: Vec<f32>,
+}
