@@ -13,16 +13,33 @@ pub enum SuggestMode {
     Execution,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct SuggestConfig {
-    pub mode: SuggestMode,
-    pub add_to_history: bool,
+#[derive(Error, Debug)]
+pub enum SuggestModeError {
+    #[error("Invalid value: {0}")]
+    InvalidValue(String),
+}
+
+impl TryFrom<&str> for SuggestMode {
+    type Error = SuggestModeError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "clipboard" => Ok(SuggestMode::Clipboard),
+            "unsafe-execution" => Ok(SuggestMode::Execution),
+            _ => Err(SuggestModeError::InvalidValue(value.to_string())),
+        }
+    }
 }
 
 impl Default for SuggestMode {
     fn default() -> Self {
         Self::Clipboard
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SuggestConfig {
+    pub mode: SuggestMode,
+    pub add_to_history: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,13 +57,12 @@ pub enum SuggestionEngineError {
     Serialization(String),
 }
 
-#[derive(Debug)]
-pub struct SuggestionEngine<T: Llm> {
-    llm: T,
+pub struct SuggestionEngine {
+    llm: Box<dyn Llm>,
 }
 
-impl<T: Llm> SuggestionEngine<T> {
-    pub fn new(llm: T) -> Self {
+impl SuggestionEngine {
+    pub fn new(llm: Box<dyn Llm>) -> Self {
         Self { llm }
     }
 
@@ -112,12 +128,18 @@ impl<T: Llm> SuggestionEngine<T> {
         'explanation' for a very short explanation about the command or notes you may have,
         and nothing else.
         For the command, if there are arguments, use the format '<argument_name>', for example 'kubectl logs -n <namespace> <pod-name>'.
+        Remember to format the response as JSON.
         ";
 
         let response = self
             .llm
             .generate(prompt, SYSTEM_PROMPT)
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
+        if !response.trim().starts_with('{') || !response.trim().ends_with('}') {
+            return Err(SuggestionEngineError::Generation(
+                "Response from LLM is not in JSON format".to_string(),
+            ));
+        }
         let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
         Ok(parsed_response)
     }
@@ -192,9 +214,11 @@ impl<T: Llm> SuggestionEngine<T> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "ollama")]
 mod tests {
+    use crate::llm::ollama::{config::OllamaConfig, models::OllamaGenerateResponse, ollama_llm::OllamaLocalLlm};
+
     use super::*;
-    use crate::ollama::{config::OllamaConfig, models::OllamaGenerateResponse, ollama_llm::OllamaLocalLlm};
     use httpmock::{Method::POST, MockServer};
 
     #[test]
@@ -219,13 +243,13 @@ mod tests {
         });
 
         let ollama_config = OllamaConfig {
-            base_url: mock_server.base_url(),
-            model: "mockstral:latest".to_string(),
-            embedding_model: "mockembed:latest".to_string(),
+            base_url: Some(mock_server.base_url()),
+            model: Some("mockstral:latest".to_string()),
+            embedding_model: Some("mockembed:latest".to_string()),
         };
 
         let ollama = OllamaLocalLlm::new(ollama_config.clone());
-        let suggestion_engine = SuggestionEngine::new(ollama.clone());
+        let suggestion_engine = SuggestionEngine::new(Box::new(ollama));
 
         let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt");
         mock_generation_api.assert();

@@ -32,12 +32,3 @@ jobs:
           components: rustfmt
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
-
-  publish-dryrun:
-    name: Publish (dry run)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo install cargo-dist --locked
-      - run: cargo dist plan

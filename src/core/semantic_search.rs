@@ -29,12 +29,12 @@ pub struct IndexItem {
     embedding: Vec<f32>,
 }
 
-pub struct SemanticSearchEngine<L: Llm> {
-    llm: L,
+pub struct SemanticSearchEngine {
+    llm: Box<dyn Llm>,
 }
 
-impl<L: Llm> SemanticSearchEngine<L> {
-    pub fn new(llm: L) -> Self {
+impl SemanticSearchEngine {
+    pub fn new(llm: Box<dyn Llm>) -> Self {
         Self { llm }
     }
 

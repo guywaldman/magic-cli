@@ -4,12 +4,11 @@ use inquire::{list_option::ListOption, InquireError, Select};
 use std::{collections::HashSet, time::SystemTime};
 use thiserror::Error;
 
-use crate::{
-    core::{HayStackItem, IndexEngine, IndexError, IndexMetadata, SemanticSearchEngine, SemanticSearchEngineError, Shell, ShellError},
-    ollama::ollama_llm::OllamaLocalLlm,
+use crate::core::{
+    HayStackItem, IndexEngine, IndexError, IndexMetadata, Llm, SemanticSearchEngine, SemanticSearchEngineError, Shell, ShellError,
 };
 
-use super::config::{CliConfig, CliConfigError};
+use super::config::{MagicCliConfig, MagicCliConfigError};
 
 #[derive(Debug, Error)]
 pub(crate) enum CliSearchError {
@@ -17,7 +16,7 @@ pub(crate) enum CliSearchError {
     Indexing(#[from] IndexError),
 
     #[error("Error during loading of configuration: {0}")]
-    Config(#[from] CliConfigError),
+    Config(#[from] MagicCliConfigError),
 
     #[error("Error from shell interaction: {0}")]
     Shell(#[from] ShellError),
@@ -29,19 +28,24 @@ pub(crate) enum CliSearchError {
     CommandNotSelected(#[from] InquireError),
 }
 
-pub(crate) struct CliSearch;
+pub(crate) struct CliSearch {
+    llm: Box<dyn Llm>,
+}
 
 impl CliSearch {
+    pub fn new(llm: Box<dyn Llm>) -> Self {
+        Self { llm }
+    }
+
     pub fn search_command(&self, prompt: &str, index: bool) -> Result<String, CliSearchError> {
-        let config = CliConfig::load_config()?;
-        let index_dir_path = CliConfig::get_config_dir_path()?.join("index");
+        let index_dir_path = MagicCliConfig::get_config_dir_path()?.join("index");
         if !index_dir_path.exists() {
             std::fs::create_dir_all(&index_dir_path).unwrap();
         }
         let index_path = index_dir_path.join("index.json");
         let index_metadata_path = index_dir_path.join("index_metadata.json");
         let index_engine = IndexEngine::new(
-            SemanticSearchEngine::new(OllamaLocalLlm::new(config.ollama_config.clone())),
+            SemanticSearchEngine::new(dyn_clone::clone_box(&*self.llm)),
             index_path,
             index_metadata_path,
         );
@@ -76,7 +80,7 @@ impl CliSearch {
         }
 
         let index = index_engine.load_index()?;
-        let semantic_search_engine = SemanticSearchEngine::new(OllamaLocalLlm::new(config.ollama_config.clone()));
+        let semantic_search_engine = SemanticSearchEngine::new(dyn_clone::clone_box(&*self.llm));
         let semantic_search_results = semantic_search_engine.top_k(prompt, index, 10)?;
 
         let options = semantic_search_results

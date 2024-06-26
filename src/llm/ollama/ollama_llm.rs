@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::core::Llm;
+use crate::core::{Llm, LlmError};
 
 use super::{
     config::OllamaConfig,
@@ -19,6 +19,9 @@ pub enum OllamaLocalLlmError {
 
     #[error("Unexpected error when parsing response from Ollama. Error: {0}")]
     Parsing(String),
+
+    #[error("Configuration error: {0}")]
+    Configuration(String),
 
     #[error("Serialization error: {0}")]
     Serialization(String),
@@ -45,9 +48,9 @@ impl OllamaLocalLlm {
     ///
     fn generate(&self, prompt: &str, system_prompt: &str) -> Result<String, OllamaLocalLlmError> {
         let client = reqwest::blocking::Client::new();
-        let url = format!("{}/api/generate", self.config.base_url);
+        let url = format!("{}/api/generate", self.base_url()?);
         let body = OllamaGenerateRequest {
-            model: self.config.model.to_string(),
+            model: self.model()?,
             prompt: prompt.to_string(),
             stream: Some(false),
             format: Some("json".to_string()),
@@ -76,9 +79,9 @@ impl OllamaLocalLlm {
     /// A [Result] containing the embedding or an error if there was a problem.
     fn generate_embedding(&self, prompt: &str) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
         let client = reqwest::blocking::Client::new();
-        let url = format!("{}/api/embeddings", self.config.base_url);
+        let url = format!("{}/api/embeddings", self.base_url()?);
         let body = OllamaEmbeddingsRequest {
-            model: self.config.embedding_model.to_string(),
+            model: self.embedding_model()?,
             prompt: prompt.to_string(),
         };
         let response = client
@@ -122,7 +125,7 @@ impl OllamaLocalLlm {
     }
 
     fn get_from_ollama_api(&self, url: &str) -> Result<String, OllamaLocalLlmError> {
-        let url = format!("{}/{}", self.config.base_url, url);
+        let url = format!("{}/{}", self.base_url()?, url);
 
         let client = reqwest::blocking::Client::new();
         let response = client
@@ -132,24 +135,50 @@ impl OllamaLocalLlm {
         let response_text = response.text().map_err(|e| OllamaLocalLlmError::Api(e.to_string()))?;
         Ok(response_text)
     }
+
+    fn base_url(&self) -> Result<String, OllamaLocalLlmError> {
+        self.config
+            .base_url
+            .clone()
+            .ok_or_else(|| OllamaLocalLlmError::Configuration("Base URL not set".to_string()))
+    }
+
+    fn model(&self) -> Result<String, OllamaLocalLlmError> {
+        self.config
+            .model
+            .clone()
+            .ok_or_else(|| OllamaLocalLlmError::Configuration("Model not set".to_string()))
+    }
+
+    fn embedding_model(&self) -> Result<String, OllamaLocalLlmError> {
+        self.config
+            .embedding_model
+            .clone()
+            .ok_or_else(|| OllamaLocalLlmError::Configuration("Embedding model not set".to_string()))
+    }
 }
 
 impl Llm for OllamaLocalLlm {
-    fn generate(&self, prompt: &str, system_prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let response = self.generate(prompt, system_prompt)?;
+    fn generate(&self, prompt: &str, system_prompt: &str) -> Result<String, LlmError> {
+        let response = self
+            .generate(prompt, system_prompt)
+            .map_err(|e| LlmError::TextGeneration(e.to_string()))?;
         Ok(response)
     }
 
-    fn generate_embedding(&self, item: &str) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-        let response = self.generate_embedding(item)?;
+    fn generate_embedding(&self, item: &str) -> Result<Vec<f32>, LlmError> {
+        let response = self
+            .generate_embedding(item)
+            .map_err(|e| LlmError::EmbeddingGeneration(e.to_string()))?;
         Ok(response)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::llm::ollama::models::{OllamaApiModelDetails, OllamaApiModelMetadata};
+
     use super::*;
-    use crate::ollama::models::{OllamaApiModelDetails, OllamaApiModelMetadata, OllamaApiModelsMetadata};
     use httpmock::{
         Method::{GET, POST},
         MockServer,
@@ -183,9 +212,9 @@ mod tests {
         });
 
         let ollama_config = OllamaConfig {
-            base_url: mock_server.base_url(),
-            model: "mockstral:latest".to_string(),
-            embedding_model: "mockembed:latest".to_string(),
+            base_url: Some(mock_server.base_url()),
+            model: Some("mockstral:latest".to_string()),
+            embedding_model: Some("mockembed:latest".to_string()),
         };
 
         let ollama = OllamaLocalLlm::new(ollama_config.clone());
@@ -215,9 +244,9 @@ mod tests {
         });
 
         let ollama_config = OllamaConfig {
-            base_url: mock_server.base_url(),
-            model: "mockstral:latest".to_string(),
-            embedding_model: "mockembed:latest".to_string(),
+            base_url: Some(mock_server.base_url()),
+            model: Some("mockstral:latest".to_string()),
+            embedding_model: Some("mockembed:latest".to_string()),
         };
         let ollama = OllamaLocalLlm::new(ollama_config.clone());
 

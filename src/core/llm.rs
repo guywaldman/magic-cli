@@ -1,4 +1,19 @@
-pub(crate) trait Llm {
+use dyn_clone::DynClone;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum LlmError {
+    #[error("Text generation error: {0}")]
+    TextGeneration(String),
+
+    #[error("Embedding generation error: {0}")]
+    EmbeddingGeneration(String),
+
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+}
+
+pub(crate) trait Llm: DynClone {
     /// Generates a response from the LLM.
     ///
     /// # Arguments
@@ -8,7 +23,7 @@ pub(crate) trait Llm {
     /// # Returns
     /// A [Result] containing the response from the LLM or an error if there was a problem.
     ///
-    fn generate(&self, prompt: &str, system_prompt: &str) -> Result<String, Box<dyn std::error::Error>>;
+    fn generate(&self, prompt: &str, system_prompt: &str) -> Result<String, LlmError>;
 
     /// Generates an embedding from the LLM.
     ///
@@ -18,5 +33,5 @@ pub(crate) trait Llm {
     /// # Returns
     ///
     /// A [Result] containing the embedding or an error if there was a problem.
-    fn generate_embedding(&self, prompt: &str) -> Result<Vec<f32>, Box<dyn std::error::Error>>;
+    fn generate_embedding(&self, prompt: &str) -> Result<Vec<f32>, LlmError>;
 }
