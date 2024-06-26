@@ -200,6 +200,6 @@ impl Shell {
             return Ok(ShellType::Zsh);
         }
 
-        Err(ShellError::FailedToExtractSystemInfo("Failed to get shell type".to_string()))
+        Ok(ShellType::Bash)
     }
 }
