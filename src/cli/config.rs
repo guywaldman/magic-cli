@@ -19,6 +19,7 @@ type ConfigurationKeyUpdateFn = Box<dyn Fn(&mut CliConfig, &str) -> Result<(), C
 pub struct ConfigurationKey {
     pub key: String,
     pub description: String,
+    pub is_secret: bool,
     update_fn: ConfigurationKeyUpdateFn,
 }
 
@@ -197,7 +198,8 @@ impl CliConfig {
                 "llm".to_string(),
                 ConfigurationKey {
                     key: "llm".to_string(),
-                    description: "The LLM to use for generating responses.".to_string(),
+                    description: "The LLM to use for generating responses. Supported values: \"ollama\", \"openai\"".to_string(),
+                    is_secret: false,
                     update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                         config.llm = LlmProvider::try_from(value)?;
                         Ok(())
@@ -206,7 +208,8 @@ impl CliConfig {
             );
             keys.insert("suggest.mode".to_string(), ConfigurationKey {
                 key: "suggest.mode".to_string(),
-                description: "The mode to use for suggesting commands (supported values: \"clipboard\" for copying to clipboard, \"unsafe-execution\" for executing commands in the current shell session).".to_string(),
+                description: "The mode to use for suggesting commands. Supported values: \"clipboard\" (copying command to clipboard), \"unsafe-execution\" (executing in the current shell session)".to_string(),
+                is_secret: false,
                 update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                     config.suggest.mode = SuggestMode::try_from(value)?;
                     Ok(())
@@ -214,7 +217,8 @@ impl CliConfig {
             });
             keys.insert("suggest.add_to_history".to_string(), ConfigurationKey {
                 key: "suggest.add_to_history".to_string(),
-                description: "Whether to add the suggested command to the shell history (supported values: \"true\", \"false\").".to_string(),
+                description: "Whether to add the suggested command to the shell history.".to_string(),
+                is_secret: false,
                 update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                     config.suggest.add_to_history = value.parse::<bool>().map_err(|_| CliConfigError::InvalidConfigValue(value.to_string()))?;
                     Ok(())
@@ -225,6 +229,7 @@ impl CliConfig {
                 ConfigurationKey {
                     key: "ollama.base_url".to_string(),
                     description: "The base URL of the Ollama API.".to_string(),
+                    is_secret: false,
                     update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                         config.ollama_config.base_url = Some(value.to_string());
                         Ok(())
@@ -236,6 +241,7 @@ impl CliConfig {
                 ConfigurationKey {
                     key: "ollama.model".to_string(),
                     description: "The model to use for generating responses.".to_string(),
+                    is_secret: false,
                     update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                         config.ollama_config.model = Some(value.to_string());
                         Ok(())
@@ -247,6 +253,7 @@ impl CliConfig {
                 ConfigurationKey {
                     key: "ollama.embedding_model".to_string(),
                     description: "The model to use for generating embeddings.".to_string(),
+                    is_secret: false,
                     update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                         config.ollama_config.embedding_model = Some(value.to_string());
                         Ok(())
@@ -258,6 +265,7 @@ impl CliConfig {
                 ConfigurationKey {
                     key: "openai.api_key".to_string(),
                     description: "The API key for the OpenAI API.".to_string(),
+                    is_secret: true,
                     update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                         config.openai_config.api_key = Some(value.to_string());
                         Ok(())
@@ -269,6 +277,7 @@ impl CliConfig {
                 ConfigurationKey {
                     key: "openai.model".to_string(),
                     description: "The model to use for generating responses.".to_string(),
+                    is_secret: false,
                     update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                         config.openai_config.model = Some(value.to_string());
                         Ok(())
@@ -280,6 +289,7 @@ impl CliConfig {
                 ConfigurationKey {
                     key: "openai.embedding_model".to_string(),
                     description: "The model to use for generating embeddings.".to_string(),
+                    is_secret: false,
                     update_fn: Box::new(|config: &mut CliConfig, value: &str| {
                         config.openai_config.embedding_model = Some(value.to_string());
                         Ok(())

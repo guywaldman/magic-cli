@@ -91,6 +91,7 @@ impl MagicCli {
                     };
                     let value = match value {
                         Some(value) => value,
+                        // TODO: Support secrets.
                         None => Text::new(&format!("{} {}: ", "Enter the value for the key", key.magenta())).prompt()?,
                     };
 
@@ -123,9 +124,15 @@ impl MagicCli {
                     for (i, item) in config_keys_sorted.iter().enumerate() {
                         let config_value = CliConfig::get(&item.key)?;
                         let config_value = config_value.replace("null", "-");
+                        let config_value = if item.is_secret {
+                            "*".repeat(config_value.len())
+                        } else {
+                            config_value
+                        };
                         println!(
-                            "Field: {}\nValue: {}\nDescription: {}",
+                            "Field: {} {}\nValue: {}\nDescription: {}",
                             item.key.blue().bold(),
+                            if item.is_secret { "(secret)".yellow() } else { "".dimmed() },
                             config_value.bold(),
                             item.description.dimmed(),
                         );
