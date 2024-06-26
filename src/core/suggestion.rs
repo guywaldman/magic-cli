@@ -128,12 +128,18 @@ impl SuggestionEngine {
         'explanation' for a very short explanation about the command or notes you may have,
         and nothing else.
         For the command, if there are arguments, use the format '<argument_name>', for example 'kubectl logs -n <namespace> <pod-name>'.
+        Remember to format the response as JSON.
         ";
 
         let response = self
             .llm
             .generate(prompt, SYSTEM_PROMPT)
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
+        if !response.trim().starts_with('{') || !response.trim().ends_with('}') {
+            return Err(SuggestionEngineError::Generation(
+                "Response from LLM is not in JSON format".to_string(),
+            ));
+        }
         let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
         Ok(parsed_response)
     }

@@ -8,7 +8,7 @@ use crate::core::{
     HayStackItem, IndexEngine, IndexError, IndexMetadata, Llm, SemanticSearchEngine, SemanticSearchEngineError, Shell, ShellError,
 };
 
-use super::config::{CliConfig, CliConfigError};
+use super::config::{MagicCliConfig, MagicCliConfigError};
 
 #[derive(Debug, Error)]
 pub(crate) enum CliSearchError {
@@ -16,7 +16,7 @@ pub(crate) enum CliSearchError {
     Indexing(#[from] IndexError),
 
     #[error("Error during loading of configuration: {0}")]
-    Config(#[from] CliConfigError),
+    Config(#[from] MagicCliConfigError),
 
     #[error("Error from shell interaction: {0}")]
     Shell(#[from] ShellError),
@@ -38,7 +38,7 @@ impl CliSearch {
     }
 
     pub fn search_command(&self, prompt: &str, index: bool) -> Result<String, CliSearchError> {
-        let index_dir_path = CliConfig::get_config_dir_path()?.join("index");
+        let index_dir_path = MagicCliConfig::get_config_dir_path()?.join("index");
         if !index_dir_path.exists() {
             std::fs::create_dir_all(&index_dir_path).unwrap();
         }
