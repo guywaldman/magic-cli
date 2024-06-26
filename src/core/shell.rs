@@ -48,7 +48,7 @@ impl TryFrom<&str> for ShellType {
         match value {
             "zsh" => Ok(ShellType::Zsh),
             "bash" => Ok(ShellType::Bash),
-            "powershell" => Ok(ShellType::Pwsh),
+            "pwsh" => Ok(ShellType::Pwsh),
             _ => Err(ShellError::UnsupportedShellType(value.to_string())),
         }
     }
@@ -59,7 +59,7 @@ impl std::fmt::Display for ShellType {
         match self {
             ShellType::Zsh => write!(f, "zsh"),
             ShellType::Bash => write!(f, "bash"),
-            ShellType::Pwsh => write!(f, "powershell"),
+            ShellType::Pwsh => write!(f, "pwsh"),
         }
     }
 }

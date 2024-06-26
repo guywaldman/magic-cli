@@ -2,6 +2,7 @@ use super::{
     subcommand_config::{ConfigSubcommand, ConfigSubcommands},
     subcommand_search::SearchSubcommand,
     subcommand_suggest::SuggestSubcommand,
+    subcommand_sysinfo::SysInfoSubcommand,
 };
 use clap::{ArgAction, Parser, Subcommand};
 use std::{error::Error, process::exit};
@@ -16,15 +17,18 @@ struct ClapCli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Suggest a command.
     Suggest {
         /// The prompt to suggest a command for (e.g., "List all Kubernetes pods")
         #[arg()]
         prompt: String,
     },
+    /// Configure the CLI.
     Config {
         #[command(subcommand)]
         command: ConfigSubcommands,
     },
+    /// Search the command history
     Search {
         /// The prompt to search for.
         #[arg()]
@@ -34,6 +38,8 @@ enum Commands {
         #[arg(short, long, action=ArgAction::SetTrue)]
         index: bool,
     },
+    /// Get system information.
+    SysInfo,
 }
 
 pub struct MagicCli;
@@ -55,6 +61,11 @@ impl MagicCli {
             }
             Commands::Search { prompt, index } => {
                 if SearchSubcommand::run(&prompt, index).is_err() {
+                    exit(1);
+                }
+            }
+            Commands::SysInfo => {
+                if SysInfoSubcommand::run().is_err() {
                     exit(1);
                 }
             }
