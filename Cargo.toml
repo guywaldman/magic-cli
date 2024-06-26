@@ -4,6 +4,11 @@ version = "0.1.0"
 repository = "https://github.com/guywaldman/magic-cli"
 edition = "2021"
 
+[features]
+default = ["ollama", "openai"]
+ollama = []
+openai = ["dep:openai-api-rs"]
+
 [dependencies]
 chrono = "0.4.38"
 clap = { version = "4.5.7", features = ["derive"] }
@@ -14,13 +19,13 @@ dyn-clone = "1.0.17"
 home = "0.5.9"
 httpmock = "0.7.0"
 inquire = "0.7.5"
-openai-api-rs = "4.1.1"
 reqwest = { version = "0.12.5", features = ["blocking"] }
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
 simsimd = "4.4.0"
 thiserror = "1.0.61"
 tokio = "1.38.0"
+openai-api-rs = { version = "4.1.1", optional = true }
 
 [dev-dependencies]
 chrono = "0.4.38"
@@ -37,7 +42,12 @@ cargo-dist-version = "0.16.0"
 # The installers to generate for each app
 installers = []
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+targets = [
+	"aarch64-apple-darwin",
+	"x86_64-apple-darwin",
+	"x86_64-unknown-linux-gnu",
+	"x86_64-pc-windows-msvc",
+]
 # CI backends to support
 ci = "github"
 # Publish jobs to run in CI

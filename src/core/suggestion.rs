@@ -214,6 +214,7 @@ impl SuggestionEngine {
 }
 
 #[cfg(test)]
+#[cfg(feature = "ollama")]
 mod tests {
     use crate::llm::ollama::{config::OllamaConfig, models::OllamaGenerateResponse, ollama_llm::OllamaLocalLlm};
 

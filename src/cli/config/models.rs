@@ -26,14 +26,26 @@ pub enum MagicCliConfigError {
 
     #[error("Error converting from or to 'SuggestMode': {0}")]
     SuggestModeError(#[from] SuggestModeError),
+
+    #[error("LLM {llm} not supported, please make sure you compiled with the '{feature}' feature enabled")]
+    LlmNotSupported { llm: String, feature: String },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum LlmProvider {
     #[serde(rename = "ollama")]
     Ollama,
     #[serde(rename = "openai")]
     OpenAi,
+}
+
+impl std::fmt::Display for LlmProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LlmProvider::Ollama => write!(f, "ollama"),
+            LlmProvider::OpenAi => write!(f, "openai"),
+        }
+    }
 }
 
 impl Default for LlmProvider {

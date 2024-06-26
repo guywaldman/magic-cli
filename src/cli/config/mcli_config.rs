@@ -1,8 +1,10 @@
+use crate::cli::config::MagicCliConfigError;
 use crate::core::{Llm, SuggestConfig};
+#[cfg(feature = "ollama")]
 use crate::llm::ollama::config::OllamaConfig;
+#[cfg(feature = "openai")]
 use crate::llm::openai::config::OpenAiConfig;
-use crate::llm::openai::openai_llm::OpenAiLlm;
-use crate::{cli::config::MagicCliConfigError, llm::ollama::ollama_llm::OllamaLocalLlm};
+
 use colored::Colorize;
 use home::home_dir;
 use inquire::list_option::ListOption;
@@ -18,8 +20,10 @@ use super::{ConfigKeys, LlmProvider};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MagicCliConfig {
+    #[cfg(feature = "ollama")]
     #[serde(rename = "ollama")]
     pub ollama_config: OllamaConfig,
+    #[cfg(feature = "openai")]
     #[serde(rename = "openai")]
     pub openai_config: OpenAiConfig,
     pub llm: LlmProvider,
@@ -134,9 +138,19 @@ impl MagicCliConfig {
     }
 
     pub fn llm_from_config(config: &MagicCliConfig) -> Result<Box<dyn Llm>, Box<dyn Error>> {
-        match config.llm {
-            LlmProvider::Ollama => Ok(Box::new(OllamaLocalLlm::new(config.ollama_config.clone()))),
-            LlmProvider::OpenAi => Ok(Box::new(OpenAiLlm::new(config.openai_config.clone()))),
+        #[cfg(feature = "ollama")]
+        if config.llm == LlmProvider::Ollama {
+            use crate::llm::ollama::ollama_llm::OllamaLocalLlm;
+            return Ok(Box::new(OllamaLocalLlm::new(config.ollama_config.clone())));
         }
+        #[cfg(feature = "openai")]
+        if config.llm == LlmProvider::OpenAi {
+            use crate::llm::openai::openai_llm::OpenAiLlm;
+            return Ok(Box::new(OpenAiLlm::new(config.openai_config.clone())));
+        }
+        Err(Box::new(MagicCliConfigError::LlmNotSupported {
+            llm: config.llm.to_string(),
+            feature: "ollama".to_string(),
+        }))
     }
 }
