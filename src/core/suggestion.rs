@@ -3,6 +3,8 @@ use inquire::Text;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::core::Shell;
+
 use super::llm::Llm;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -121,19 +123,31 @@ impl SuggestionEngine {
     }
 
     pub(crate) fn generate_suggested_command(&self, prompt: &str) -> Result<SuggestedCommand, SuggestionEngineError> {
-        const SYSTEM_PROMPT: &str = "
-        You are a an assistant that provides suggestions for a command to
-        run on a Linux machine that satisfies the user's request.
-        Please only provide a JSON which contains the fields 'command' for the command,
-        'explanation' for a very short explanation about the command or notes you may have,
-        and nothing else.
+        let system_info = Shell::extract_env_info().unwrap();
+
+        let system_prompt = format!("
+        You are a an assistant that provides suggestions for a command to run on the user's command line.
+        Please only provide a JSON which contains the fields:
+        - 'command' for the command,
+        - 'explanation' for a very short explanation about the command or notes you may have
+        ...and nothing else! Just those fields.
         For the command, if there are arguments, use the format '<argument_name>', for example 'kubectl logs -n <namespace> <pod-name>'.
-        Remember to format the response as JSON.
-        ";
+
+        IMPORTANT NOTES:
+        1. Remember to format the response as JSON.
+        2. Make sure that *any* placeholder (even things such as /path/to/file) are formatted as '<placeholder_name>'.
+        3. Try to accommodate for the user's environment (adjust the suggestion based on their shell, OS, architecture, etc.). See below the system information.
+
+        The user's system information is:
+        - Shell: {shell}
+        - OS: {os}
+        - OS version: {os_version}
+        - CPU architecture: {arch}
+        ", shell = system_info.shell, os = system_info.os, os_version = system_info.os_version, arch = system_info.arch);
 
         let response = self
             .llm
-            .generate(prompt, SYSTEM_PROMPT)
+            .generate(prompt, &system_prompt)
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
         if !response.trim().starts_with('{') || !response.trim().ends_with('}') {
             return Err(SuggestionEngineError::Generation(
@@ -149,15 +163,29 @@ impl SuggestionEngine {
         previous_command: &SuggestedCommand,
         prompt: &str,
     ) -> Result<SuggestedCommand, SuggestionEngineError> {
-        const SYSTEM_PROMPT: &str = "
-        You are a an assistant that provides suggestions for a command to
-        run on a Linux machine that satisfies the user's request.
-        You will receive a command that you suggested before and a prompt from the user to revise it.
-        Please only provide a JSON which contains the fields 'command' for the command,
-        'explanation' for a very short explanation about the command or notes you may have,
-        and nothing else.
+        let system_info = Shell::extract_env_info().unwrap();
+
+        let system_prompt = format!("
+        You are a an assistant that provides suggestions for a command to run on the user's command line.
+        Please only provide a JSON which contains the fields:
+        - 'command' for the command,
+        - 'explanation' for a very short explanation about the command or notes you may have
+        ...and nothing else! Just those fields.
         For the command, if there are arguments, use the format '<argument_name>', for example 'kubectl logs -n <namespace> <pod-name>'.
-        ";
+
+        You will receive a command that you suggested before and a prompt from the user to revise it.
+
+        IMPORTANT NOTES:
+        1. Remember to format the response as JSON.
+        2. Make sure that *any* placeholder (even things such as /path/to/file) are formatted as '<placeholder_name>'.
+        3. Try to accommodate for the user's environment (adjust the suggestion based on their shell, OS, architecture, etc.). See below the system information.
+
+        The user's system information is:
+        - Shell: {shell}
+        - OS: {os}
+        - OS version: {os_version}
+        - CPU architecture: {arch}
+        ", shell = system_info.shell, os = system_info.os, os_version = system_info.os_version, arch = system_info.arch);
 
         let prompt = format!(
             "
@@ -170,7 +198,7 @@ impl SuggestionEngine {
 
         let response = self
             .llm
-            .generate(&prompt, SYSTEM_PROMPT)
+            .generate(&prompt, &system_prompt)
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
         let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
         Ok(parsed_response)

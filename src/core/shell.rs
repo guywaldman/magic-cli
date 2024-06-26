@@ -8,6 +8,14 @@ use std::{
 };
 use thiserror::Error;
 
+#[derive(Debug, Clone)]
+pub struct SystemInfo {
+    pub shell: String,
+    pub os: String,
+    pub os_version: String,
+    pub arch: String,
+}
+
 #[derive(Error, Debug)]
 pub enum ShellError {
     #[error("Failed to add command to shell history. Error: {0}")]
@@ -19,17 +27,29 @@ pub enum ShellError {
     #[error("Failed to read shell history")]
     FailedToReadShellHistory,
 
-    #[error("Unknown shell type")]
-    UnknownShellType,
-
     #[error("Unsupported shell type: {0}")]
     UnsupportedShellType(String),
+
+    #[error("Failed to extract system info: {0}")]
+    FailedToExtractSystemInfo(String),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum ShellType {
     Zsh,
     Bash,
+}
+
+impl TryFrom<&str> for ShellType {
+    type Error = ShellError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "zsh" => Ok(ShellType::Zsh),
+            "bash" => Ok(ShellType::Bash),
+            _ => Err(ShellError::UnsupportedShellType(value.to_string())),
+        }
+    }
 }
 
 impl std::fmt::Display for ShellType {
@@ -67,6 +87,21 @@ impl ShellType {
 pub struct Shell;
 
 impl Shell {
+    pub fn extract_env_info() -> Result<SystemInfo, ShellError> {
+        let os = sysinfo::System::name().ok_or(ShellError::FailedToExtractSystemInfo("Failed to get system name".to_string()))?;
+        let os_version =
+            sysinfo::System::os_version().ok_or(ShellError::FailedToExtractSystemInfo("Failed to extract OS version".to_string()))?;
+        let arch =
+            sysinfo::System::cpu_arch().ok_or(ShellError::FailedToExtractSystemInfo("Failed to get CPU architecture".to_string()))?;
+        let shell_type = Self::current_shell_type()?;
+        Ok(SystemInfo {
+            shell: shell_type.to_string(),
+            os,
+            os_version,
+            arch,
+        })
+    }
+
     pub fn add_command_to_history(command: &str) -> Result<(), ShellError> {
         let shell_type = Self::current_shell_type()?;
         let resp = match shell_type {
@@ -116,16 +151,18 @@ impl Shell {
     }
 
     fn current_shell_type() -> Result<ShellType, ShellError> {
-        if let Ok(shell) = std::env::var("SHELL") {
-            if shell.contains("zsh") {
-                Ok(ShellType::Zsh)
-            } else if shell.contains("bash") {
-                Ok(ShellType::Bash)
-            } else {
-                Err(ShellError::UnsupportedShellType(shell))
-            }
-        } else {
-            Err(ShellError::UnknownShellType)
-        }
+        let system = sysinfo::System::new_with_specifics(sysinfo::RefreshKind::new().with_processes(sysinfo::ProcessRefreshKind::new()));
+        let this_pid = sysinfo::get_current_pid().map_err(|e| ShellError::FailedToExtractSystemInfo(e.to_string()))?;
+        let process = system
+            .process(this_pid)
+            .ok_or(ShellError::FailedToExtractSystemInfo("Failed to get process".to_string()))?;
+        let parent_process = process
+            .parent()
+            .ok_or(ShellError::FailedToExtractSystemInfo("Failed to get parent process".to_string()))?;
+        let parent_process_name = system
+            .process(parent_process)
+            .ok_or(ShellError::FailedToExtractSystemInfo("Failed to get parent process".to_string()))?
+            .name();
+        ShellType::try_from(parent_process_name.trim())
     }
 }
