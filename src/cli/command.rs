@@ -57,9 +57,12 @@ impl CliCommand {
                     Err(e) => println!("{}", e.to_string().red()),
                 }
 
-                let split_command = command.split_whitespace().collect::<Vec<_>>();
-                let child = Command::new(split_command[0])
-                    .args(&split_command[1..])
+                // TODO: Handle error.
+                let system_info = Shell::extract_env_info().unwrap();
+                let child = Command::new(system_info.shell)
+                    .arg("-c")
+                    .arg(command)
+                    .current_dir(std::env::current_dir().unwrap())
                     .spawn()
                     .expect("Failed to execute command");
 
