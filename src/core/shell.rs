@@ -192,6 +192,14 @@ impl Shell {
                 return Ok(ShellType::Bash);
             }
         }
+
+        if std::env::var("BASH_VERSION").is_ok() {
+            return Ok(ShellType::Bash);
+        }
+        if std::env::var("ZSH_VERSION").is_ok() {
+            return Ok(ShellType::Zsh);
+        }
+
         Err(ShellError::FailedToExtractSystemInfo("Failed to get shell type".to_string()))
     }
 }
