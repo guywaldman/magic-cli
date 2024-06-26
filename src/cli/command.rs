@@ -42,7 +42,7 @@ impl CliCommand {
             }
             SuggestMode::Execution => {
                 let confirm = Confirm::new(&format!("Execute command '{}'?", command.blue().bold()))
-                    .with_default(true)
+                    .with_default(false)
                     .with_help_message(&format!(
                         "{}",
                         "WARNING: This will execute the command in the current session, please make sure that it is safe to do so"
