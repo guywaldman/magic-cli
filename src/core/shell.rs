@@ -38,6 +38,7 @@ pub enum ShellError {
 enum ShellType {
     Zsh,
     Bash,
+    Pwsh,
 }
 
 impl TryFrom<&str> for ShellType {
@@ -47,6 +48,7 @@ impl TryFrom<&str> for ShellType {
         match value {
             "zsh" => Ok(ShellType::Zsh),
             "bash" => Ok(ShellType::Bash),
+            "powershell" => Ok(ShellType::Pwsh),
             _ => Err(ShellError::UnsupportedShellType(value.to_string())),
         }
     }
@@ -57,6 +59,7 @@ impl std::fmt::Display for ShellType {
         match self {
             ShellType::Zsh => write!(f, "zsh"),
             ShellType::Bash => write!(f, "bash"),
+            ShellType::Pwsh => write!(f, "powershell"),
         }
     }
 }
@@ -66,6 +69,7 @@ impl ShellType {
         match self {
             ShellType::Zsh => "zsh",
             ShellType::Bash => "bash",
+            ShellType::Pwsh => "pwsh",
         }
     }
 
@@ -76,8 +80,20 @@ impl ShellType {
                 let history_file_name = match self {
                     ShellType::Zsh => ".zsh_history",
                     ShellType::Bash => ".bash_history",
+                    _ => unreachable!(),
                 };
                 home_dir.join(history_file_name)
+            }
+            ShellType::Pwsh => {
+                let history_path = Command::new("pwsh")
+                    .arg("-Command")
+                    .arg("(Get-PSReadlineOption).HistorySavePath")
+                    .output()
+                    // TODO: Handle error.
+                    .unwrap();
+                let history_path = String::from_utf8_lossy(&history_path.stdout);
+                let history_path = history_path.trim();
+                PathBuf::from(history_path)
             }
         }
     }
@@ -117,6 +133,19 @@ impl Shell {
                     .map_err(|e| ShellError::FailedToExecuteCommand(e.to_string()))?;
                 child.wait().map_err(|e| ShellError::FailedToExecuteCommand(e.to_string()))?
             }
+            ShellType::Pwsh => {
+                let history_path = shell_type.history_file_path();
+                let mut child = Command::new("pwsh")
+                    .arg("-Command")
+                    .arg(format!(
+                        "Add-Content -Path \"{}\" -Value \"{}\"",
+                        history_path.to_str().unwrap(),
+                        command
+                    ))
+                    .spawn()
+                    .map_err(|e| ShellError::FailedToExecuteCommand(e.to_string()))?;
+                child.wait().map_err(|e| ShellError::FailedToExecuteCommand(e.to_string()))?
+            }
         };
 
         if !resp.success() {
@@ -137,7 +166,7 @@ impl Shell {
     pub(crate) fn get_shell_history() -> Result<Vec<String>, ShellError> {
         let shell_type = Self::current_shell_type()?;
         let resp = match shell_type {
-            ShellType::Zsh | ShellType::Bash => {
+            ShellType::Zsh | ShellType::Bash | ShellType::Pwsh => {
                 let history_file_path = shell_type.history_file_path();
                 let history_file = File::open(history_file_path).map_err(|_e| ShellError::FailedToReadShellHistory)?;
                 let reader = BufReader::new(history_file);
@@ -151,18 +180,18 @@ impl Shell {
     }
 
     fn current_shell_type() -> Result<ShellType, ShellError> {
-        let system = sysinfo::System::new_with_specifics(sysinfo::RefreshKind::new().with_processes(sysinfo::ProcessRefreshKind::new()));
-        let this_pid = sysinfo::get_current_pid().map_err(|e| ShellError::FailedToExtractSystemInfo(e.to_string()))?;
-        let process = system
-            .process(this_pid)
-            .ok_or(ShellError::FailedToExtractSystemInfo("Failed to get process".to_string()))?;
-        let parent_process = process
-            .parent()
-            .ok_or(ShellError::FailedToExtractSystemInfo("Failed to get parent process".to_string()))?;
-        let parent_process_name = system
-            .process(parent_process)
-            .ok_or(ShellError::FailedToExtractSystemInfo("Failed to get parent process".to_string()))?
-            .name();
-        ShellType::try_from(parent_process_name.trim())
+        // TODO: Support PowerShell 5.1 and below. This assumes PowerShell Core.
+        if std::env::var("PSModulePath").is_ok() {
+            return Ok(ShellType::Pwsh);
+        }
+
+        if let Ok(shell) = std::env::var("SHELL") {
+            if shell.contains("zsh") {
+                return Ok(ShellType::Zsh);
+            } else if shell.contains("bash") {
+                return Ok(ShellType::Bash);
+            }
+        }
+        Err(ShellError::FailedToExtractSystemInfo("Failed to get shell type".to_string()))
     }
 }
