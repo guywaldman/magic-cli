@@ -1,8 +1,8 @@
 use std::{cell::OnceCell, collections::HashMap};
 
-use crate::core::SuggestMode;
+use crate::core::{LlmProvider, SuggestMode};
 
-use super::{LlmProvider, MagicCliConfig, MagicCliConfigError};
+use super::{MagicCliConfig, MagicCliConfigError};
 
 type ConfigurationKeyUpdateFn = Box<dyn Fn(&mut MagicCliConfig, &str) -> Result<(), MagicCliConfigError>>;
 
@@ -49,7 +49,7 @@ impl ConfigKeys {
                     "llm".to_string(),
                     "The LLM to use for generating responses. Supported values: \"ollama\", \"openai\"".to_string(),
                     Box::new(|config: &mut MagicCliConfig, value: &str| {
-                        config.llm = LlmProvider::try_from(value)?;
+                        config.llm = LlmProvider::try_from(value).expect("Invalid LLM provider");
                         Ok(())
                     })
                 ).with_prio(0));

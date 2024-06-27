@@ -1,4 +1,5 @@
 use super::{
+    subcommand_ask::AskSubcommand,
     subcommand_config::{ConfigSubcommand, ConfigSubcommands},
     subcommand_search::SearchSubcommand,
     subcommand_suggest::SuggestSubcommand,
@@ -20,6 +21,12 @@ enum Commands {
     /// Suggest a command.
     Suggest {
         /// The prompt to suggest a command for (e.g., "List all Kubernetes pods")
+        #[arg()]
+        prompt: String,
+    },
+    /// Ask to perform an action in the terminal.
+    Ask {
+        /// The prompt to ask for (e.g., "Set up the development environment")
         #[arg()]
         prompt: String,
     },
@@ -51,6 +58,11 @@ impl MagicCli {
         match clap_cli.command {
             Commands::Suggest { prompt } => {
                 if SuggestSubcommand::run(&prompt).is_err() {
+                    exit(1);
+                }
+            }
+            Commands::Ask { prompt } => {
+                if AskSubcommand::run(&prompt).is_err() {
                     exit(1);
                 }
             }
