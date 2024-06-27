@@ -20,13 +20,15 @@ pub(crate) struct CliCommand {
     suggest_config: SuggestConfig,
 }
 
+#[allow(dead_code)]
 pub struct CommandExecutionResult {
-    executed: bool,
+    pub executed: bool,
     pub stdout: String,
     pub stderr: String,
     pub status: i32,
 }
 
+#[allow(dead_code)]
 pub enum CommandRunResult {
     Execution(CommandExecutionResult),
     ClipboardCopy(bool),
