@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::core::{Llm, LlmError};
+use crate::core::{Llm, LlmError, LlmProvider};
 
 use super::{
     config::OllamaConfig,
@@ -171,6 +171,18 @@ impl Llm for OllamaLocalLlm {
             .generate_embedding(item)
             .map_err(|e| LlmError::EmbeddingGeneration(e.to_string()))?;
         Ok(response)
+    }
+
+    fn provider(&self) -> LlmProvider {
+        LlmProvider::Ollama
+    }
+
+    fn text_completion_model_name(&self) -> String {
+        self.model().expect("Model not set").to_string()
+    }
+
+    fn embedding_model_name(&self) -> String {
+        self.embedding_model().expect("Embedding model not set").to_string()
     }
 }
 

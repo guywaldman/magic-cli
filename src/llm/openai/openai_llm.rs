@@ -1,6 +1,6 @@
 use openai_api_rs::v1::{api::Client, chat_completion, embedding};
 
-use crate::core::{Llm, LlmError};
+use crate::core::{Llm, LlmError, LlmProvider};
 
 use super::config::OpenAiConfig;
 
@@ -89,5 +89,17 @@ impl Llm for OpenAiLlm {
             .embedding
             .clone();
         Ok(item_embedding)
+    }
+
+    fn provider(&self) -> LlmProvider {
+        LlmProvider::OpenAi
+    }
+
+    fn text_completion_model_name(&self) -> String {
+        self.model().expect("Model not set").to_string()
+    }
+
+    fn embedding_model_name(&self) -> String {
+        self.embedding_model().expect("Embedding model not set").to_string()
     }
 }

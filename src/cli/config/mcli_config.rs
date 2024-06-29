@@ -1,10 +1,10 @@
-use crate::cli::config::MagicCliConfigError;
-use crate::core::{Llm, SuggestConfig};
 #[cfg(feature = "ollama")]
 use crate::llm::ollama::config::OllamaConfig;
 #[cfg(feature = "openai")]
 use crate::llm::openai::config::OpenAiConfig;
 
+use crate::cli::config::MagicCliConfigError;
+use crate::core::{Llm, LlmProvider, SuggestConfig};
 use colored::Colorize;
 use home::home_dir;
 use inquire::list_option::ListOption;
@@ -16,7 +16,7 @@ use std::{
     path::PathBuf,
 };
 
-use super::{ConfigKeys, LlmProvider};
+use super::ConfigKeys;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MagicCliConfig {
