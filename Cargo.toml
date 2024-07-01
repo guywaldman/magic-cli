@@ -1,6 +1,6 @@
 [package]
 name = "magic-cli"
-version = "0.1.1"
+version = "0.1.2"
 repository = "https://github.com/guywaldman/magic-cli"
 edition = "2021"
 
