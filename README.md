@@ -5,16 +5,50 @@
 ![Magic CLI logo](/assets/logo_sm.png)
 
 ![GitHub Actions CI](https://github.com/guywaldman/magic-cli/actions/workflows/ci.yml/badge.svg)
+![homebrew version](https://img.shields.io/homebrew/v/guywaldman%2Ftap%2Fmagic-cli)
+![homebrew downloads](https://img.shields.io/homebrew/installs/dm/guywaldman%2Ftap%2Fmagic-cli?label=homebrew%20downloads)
+
+
+Magic CLI is a command line utility which uses LLMs to help you use the command line more efficiently.
+
+This project is inspired by projects such as:
+
+- [Amazon Q (prev. Fig terminal)](https://fig.io/)
+- [GitHub Copilot for CLI](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-in-the-command-line)
 
 ---
 
-Magic CLI is a command line utility which uses LLMs to help you use the command line more efficiently.
+## Installation
+
+### Shell
+
+```shell
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/guywaldman/magic-cli/releases/download/0.0.1/magic-cli-installer.sh | sh
+```
+
+### Homebrew
+
+```shell
+brew install guywaldman/tap/magic-cli
+```
+
+### PowerShell
+
+```powershell
+powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0.1/magic-cli-installer.ps1 | iex"
+```
+
+### Binaries
+
+See the [releases page](https://github.com/guywaldman/magic-cli/releases) for binaries for your platform.
+
+For more details, see the [releases page](https://github.com/guywaldman/magic-cli/releases) for the version you want to install.
 
 ## Features
 
 - Suggest a command (see [section](#feature-suggest-a-command))
 - Ask to generate a command to perform a task (see [section](#feature-ask-to-generate-a-command))
-- Use different LLMs (see [section](#use-different-llms))
+- Use a local or remote LLM (see [section](#use-different-llms))
 
 ### Suggest a command
 
@@ -35,10 +69,9 @@ Arguments:
   <PROMPT>  The prompt to suggest a command for (e.g., "Resize image to 300x300 with ffmpeg")
 ```
 
-
 ### Ask to generate a command (experimental)
 
-Supply a prompt with a task you want the model to perform, and watch it try to suggest a command to run to achieve the goal. 
+Supply a prompt with a task you want the model to perform, and watch it try to suggest a command to run to achieve the goal.
 It may prompt you along the way to run commands if it needs more context.
 
 ```shell
@@ -55,6 +88,7 @@ Arguments:
 ### Use different LLMs
 
 Magic CLI supports two LLM providers:
+
 - `ollama`: [Ollama](https://github.com/ollama/ollama) is a local LLM provider. The command expects Ollama to be installed and running on your local machine.
 - `openai`: [OpenAI](https://openai.com/) is a cloud LLM provider. You configure an API token, and Magic CLI uses it with the OpenAI APIs.
 
@@ -108,7 +142,7 @@ Please see [SECURITY.md](SECURITY.md) for more information, and instructions on 
 
 ## Contributing
 
-Contributions are welcome!  
+Contributions are welcome!
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
