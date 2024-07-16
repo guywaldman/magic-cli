@@ -5,8 +5,8 @@
 ![Magic CLI logo](/assets/logo_sm.png)
 
 ![GitHub Actions CI](https://github.com/guywaldman/magic-cli/actions/workflows/ci.yml/badge.svg)
-![homebrew version](https://img.shields.io/homebrew/v/guywaldman%2Ftap%2Fmagic-cli)
-![homebrew downloads](https://img.shields.io/homebrew/installs/dm/guywaldman%2Ftap%2Fmagic-cli?label=homebrew%20downloads)
+<!-- ![homebrew version](https://img.shields.io/homebrew/v/guywaldman%2Ftap%2Fmagic-cli)
+![homebrew downloads](https://img.shields.io/homebrew/installs/dm/guywaldman%2Ftap%2Fmagic-cli?label=homebrew%20downloads) -->
 
 
 Magic CLI is a command line utility which uses LLMs to help you use the command line more efficiently.
@@ -19,6 +19,10 @@ This project is inspired by projects such as:
 ---
 
 ## Installation
+
+> [!NOTE]
+>
+> For more options on how to install Magic CLI, see the [releases page](https://github.com/guywaldman/magic-cli/releases) for the version you wish to install.
 
 ### Shell
 
@@ -42,7 +46,6 @@ powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0
 
 See the [releases page](https://github.com/guywaldman/magic-cli/releases) for binaries for your platform.
 
-For more details, see the [releases page](https://github.com/guywaldman/magic-cli/releases) for the version you want to install.
 
 ## Features
 
