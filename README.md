@@ -9,12 +9,15 @@
 ![homebrew downloads](https://img.shields.io/homebrew/installs/dm/guywaldman%2Ftap%2Fmagic-cli?label=homebrew%20downloads) -->
 
 
-Magic CLI is a command line utility which uses LLMs to help you use the command line more efficiently.
+Magic CLI is a command line utility which uses LLMs to help you use the command line more efficiently, inspired by projects such as [Amazon Q (prev. Fig terminal)](https://fig.io/) and [GitHub Copilot for CLI](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-in-the-command-line).
 
-This project is inspired by projects such as:
+> **Read the [announcement blog post](https://guywaldman.com/posts/introducing-magic-cli).**
 
-- [Amazon Q (prev. Fig terminal)](https://fig.io/)
-- [GitHub Copilot for CLI](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-in-the-command-line)
+> [!IMPORTANT]
+>
+> This project is still in early development.  
+> Expect breaking changes and bugs, and please report any issues you encounter.  
+> Thank you!
 
 ---
 
