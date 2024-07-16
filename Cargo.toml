@@ -1,6 +1,8 @@
 [package]
 name = "magic-cli"
 version = "0.1.2"
+description = "Command line utility to make you a magician in the terminal"
+homepage = "https://github.com/guywaldman/magic-cli"
 repository = "https://github.com/guywaldman/magic-cli"
 edition = "2021"
 
@@ -41,7 +43,10 @@ lto = "thin"
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
 cargo-dist-version = "0.16.0"
 # The installers to generate for each app
-installers = ["shell", "powershell"]
+installers = ["homebrew", "shell", "powershell"]
+# Homebrew configuration
+tap = "guywaldman/homebrew-top"
+publish-jobs = ["homebrew"]
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 # CI backends to support
