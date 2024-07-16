@@ -1,10 +1,11 @@
-name: "PR"
+name: "CI"
 
 on:
-  push:
-    branches: [main, release/*]
   pull_request:
-    branches: [main, release/*]
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ['**[0-9]+.[0-9]+.[0-9]+*']
 
 jobs:
   test:
