@@ -103,6 +103,6 @@ Please see [SECURITY.md](SECURITY.md) for more information, and instructions on 
 
 Contributions are welcome!  
 
-There are not yet official contribution guidelines, so if you have a request or found a bug, feel free to open an issue. 
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
 My only request is that pull requests follow an issue, such that we avoid situations of your hard work not being accepted due to a lack of context or necessity.
