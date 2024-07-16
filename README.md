@@ -33,10 +33,6 @@ Usage: magic-cli suggest <PROMPT>
 
 Arguments:
   <PROMPT>  The prompt to suggest a command for (e.g., "Resize image to 300x300 with ffmpeg")
-
-Options:
-  -h, --help     Print help
-  -V, --version  Print version
 ```
 
 
@@ -66,7 +62,18 @@ Magic CLI supports two LLM providers:
 
 Magic CLI stores configurations in `~/.config/magic_cli/config.json`.
 
-Use `magic-cli config` (to see the options, use `magic-cli config --help`) to set the configuration options.
+Use `magic-cli config` (to see the options, use `magic-cli config --help`) to set the configuration options:
+
+```
+Usage: magic-cli config <COMMAND>
+
+Commands:
+  set    Set a value
+  get    Get a value
+  list   List the configurations
+  reset  Reset the configurations to the default values
+  path   Get the path to the configuration file
+```
 
 The currently suppprted configuration options are:
 
