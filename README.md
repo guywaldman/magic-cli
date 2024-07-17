@@ -13,7 +13,7 @@ Magic CLI is a command line utility which uses LLMs to help you use the command 
 
 > **Read the [announcement blog post](https://guywaldman.com/posts/introducing-magic-cli).**
 
-> [!IMPORTANT]
+> [!CAUTION]
 >
 > This project is still in early development.  
 > Expect breaking changes and bugs, and please report any issues you encounter.  
