@@ -34,6 +34,8 @@ pub struct SemanticSearchEngine {
 }
 
 impl SemanticSearchEngine {
+    const SIMILARITY_THRESHOLD: f64 = 0.2;
+
     pub fn new(llm: Box<dyn Llm>) -> Self {
         Self { llm }
     }
@@ -47,6 +49,11 @@ impl SemanticSearchEngine {
             .iter()
             .filter_map(|item| {
                 let similarity = f32::cosine(item.embedding.as_slice(), needle_embedding.as_slice());
+
+                if similarity.map(|score| score < Self::SIMILARITY_THRESHOLD).unwrap_or(false) {
+                    return None;
+                }
+
                 similarity.map(|score| SemanticSearchResult {
                     id: item.item.id,
                     data: item.item.data.clone(),
