@@ -1,3 +1,9 @@
+## Version 0.0.2
+
+- Fixed an issue where error messages were not shown when subcommands failed
+- Improved the `search` subcommand
+- Added documentation for the `search` subcommand
+
 ## Version 0.0.1
 
 This is the first public release of Magic CLI.
