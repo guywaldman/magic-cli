@@ -1,13 +1,9 @@
+
 # Magic CLI
-
-> A command line utility to make you a magician in the terminal
-
 ![Magic CLI logo](/assets/logo_sm.png)
 
-![GitHub Actions CI](https://github.com/guywaldman/magic-cli/actions/workflows/ci.yml/badge.svg)
 
-<!-- ![homebrew version](https://img.shields.io/homebrew/v/guywaldman%2Ftap%2Fmagic-cli)
-![homebrew downloads](https://img.shields.io/homebrew/installs/dm/guywaldman%2Ftap%2Fmagic-cli?label=homebrew%20downloads) -->
+![GitHub Actions CI](https://github.com/guywaldman/magic-cli/actions/workflows/ci.yml/badge.svg)
 
 Magic CLI is a command line utility which uses LLMs to help you use the command line more efficiently, inspired by projects such as [Amazon Q (prev. Fig terminal)](https://fig.io/) and [GitHub Copilot for CLI](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-in-the-command-line).
 
