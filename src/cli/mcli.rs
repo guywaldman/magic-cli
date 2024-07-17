@@ -1,4 +1,5 @@
 use super::{
+    subcommand::MagicCliSubcommand,
     subcommand_ask::AskSubcommand,
     subcommand_config::{ConfigSubcommand, ConfigSubcommands},
     subcommand_search::SearchSubcommand,
@@ -6,6 +7,7 @@ use super::{
     subcommand_sysinfo::SysInfoSubcommand,
 };
 use clap::{ArgAction, Parser, Subcommand};
+use colored::Colorize;
 use std::{error::Error, process::exit};
 
 #[derive(Parser)]
@@ -57,32 +59,32 @@ impl MagicCli {
 
         match clap_cli.command {
             Commands::Suggest { prompt } => {
-                if SuggestSubcommand::run(&prompt).is_err() {
-                    exit(1);
-                }
+                Self::run_subcommmand(SuggestSubcommand::new(prompt));
             }
             Commands::Ask { prompt } => {
-                if AskSubcommand::run(&prompt).is_err() {
-                    exit(1);
-                }
+                Self::run_subcommmand(AskSubcommand::new(prompt));
             }
             Commands::Config { command } => {
-                if ConfigSubcommand::run(&command).is_err() {
-                    exit(1);
-                }
+                Self::run_subcommmand(ConfigSubcommand::new(command));
             }
             Commands::Search { prompt, index } => {
-                if SearchSubcommand::run(&prompt, index).is_err() {
-                    exit(1);
-                }
+                Self::run_subcommmand(SearchSubcommand::new(prompt, index));
             }
             Commands::SysInfo => {
-                if SysInfoSubcommand::run().is_err() {
-                    exit(1);
-                }
+                Self::run_subcommmand(SysInfoSubcommand::new());
             }
         }
 
         Ok(())
+    }
+
+    fn run_subcommmand(subcommand: impl MagicCliSubcommand) {
+        match subcommand.run() {
+            Ok(_) => {}
+            Err(err) => {
+                eprintln!("{}", format!("Error: {}", err).red().bold());
+                exit(1);
+            }
+        }
     }
 }

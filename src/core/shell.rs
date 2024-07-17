@@ -24,8 +24,8 @@ pub enum ShellError {
     #[error("Failed to add command to shell history")]
     FailedToAddCommandToHistory,
 
-    #[error("Failed to read shell history")]
-    FailedToReadShellHistory,
+    #[error("Failed to read shell history: {0}")]
+    FailedToReadShellHistory(#[from] std::io::Error),
 
     #[error("Unsupported shell type: {0}")]
     UnsupportedShellType(String),
@@ -168,12 +168,22 @@ impl Shell {
         let resp = match shell_type {
             ShellType::Zsh | ShellType::Bash | ShellType::Pwsh => {
                 let history_file_path = shell_type.history_file_path();
-                let history_file = File::open(history_file_path).map_err(|_e| ShellError::FailedToReadShellHistory)?;
-                let reader = BufReader::new(history_file);
-                reader
-                    .lines()
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|_e| ShellError::FailedToReadShellHistory)?
+                let history_file = File::open(history_file_path).map_err(ShellError::FailedToReadShellHistory)?;
+                let mut reader = BufReader::new(history_file);
+
+                // The shell history may contain non-valid UTF-8 characters.
+                let mut buf = vec![];
+                let mut lines = vec![];
+                while reader.read_until(b'\n', &mut buf).is_ok() {
+                    if buf.is_empty() {
+                        break;
+                    }
+                    let line = String::from_utf8_lossy(&buf);
+                    lines.push(line.to_string());
+                    buf.clear();
+                }
+
+                lines
             }
         };
         Ok(resp)

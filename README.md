@@ -5,9 +5,9 @@
 ![Magic CLI logo](/assets/logo_sm.png)
 
 ![GitHub Actions CI](https://github.com/guywaldman/magic-cli/actions/workflows/ci.yml/badge.svg)
+
 <!-- ![homebrew version](https://img.shields.io/homebrew/v/guywaldman%2Ftap%2Fmagic-cli)
 ![homebrew downloads](https://img.shields.io/homebrew/installs/dm/guywaldman%2Ftap%2Fmagic-cli?label=homebrew%20downloads) -->
-
 
 Magic CLI is a command line utility which uses LLMs to help you use the command line more efficiently, inspired by projects such as [Amazon Q (prev. Fig terminal)](https://fig.io/) and [GitHub Copilot for CLI](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-in-the-command-line).
 
@@ -49,11 +49,15 @@ powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0
 
 See the [releases page](https://github.com/guywaldman/magic-cli/releases) for binaries for your platform.
 
+## Usage Tip
+
+Add a
 
 ## Features
 
 - Suggest a command (see [section](#feature-suggest-a-command))
 - Ask to generate a command to perform a task (see [section](#feature-ask-to-generate-a-command))
+- Semantic search of commands across your shell history
 - Use a local or remote LLM (see [section](#use-different-llms))
 
 ### Suggest a command
@@ -73,6 +77,23 @@ Usage: magic-cli suggest <PROMPT>
 
 Arguments:
   <PROMPT>  The prompt to suggest a command for (e.g., "Resize image to 300x300 with ffmpeg")
+```
+
+### Search across your command history (experimental)
+
+Search a command across your shell history, and get a list of the top results.
+
+![Search subcommand](/assets/search_screenshot.png)
+
+```shell
+magic-cli search "zellij attach"
+```
+
+```
+Usage: magic-cli search [OPTIONS] <PROMPT>
+
+Arguments:
+  <PROMPT>  The prompt to search for
 ```
 
 ### Ask to generate a command (experimental)
@@ -140,9 +161,11 @@ The currently suppprted configuration options are:
 
 Security is taken seriously and all vulnerabilities will be handled with utmost care and priority.
 
-In terms of data stored, the only credential that is currently handled by Magic CLI is the OpenAI API key, which is stored in the **user home directory**.
+In terms of data stored, the sensitive data that is currently handled by Magic CLI is:
 
-There are plans to store this token in the system's secure key storage, but this is not yet implemented.
+- OpenAI API key, which is stored in the configuration within the **user home directory** (`!/.config/magic_cli`).
+  > There are plans to store this token in the system's secure key storage, but this is not yet implemented.
+- Embeddings of the shell history for the `magic-cli search` command, which are stored in the configuration within the **user home directory** (`!/.config/magic_cli`)
 
 Please see [SECURITY.md](SECURITY.md) for more information, and instructions on how to report potential vulnerabilities.
 

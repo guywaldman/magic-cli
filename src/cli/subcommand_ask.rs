@@ -1,4 +1,4 @@
-use super::{command::CliCommand, config::MagicCliConfig};
+use super::{command::CliCommand, config::MagicCliConfig, subcommand::MagicCliSubcommand};
 use crate::{
     cli::command::CommandRunResult,
     core::{AskEngine, AskResponse},
@@ -6,10 +6,44 @@ use crate::{
 use colored::Colorize;
 use std::error::Error;
 
-pub struct AskSubcommand;
+pub struct AskSubcommand {
+    prompt: String,
+}
 
 impl AskSubcommand {
-    pub fn run(prompt: &str) -> Result<(), Box<dyn Error>> {
+    pub fn new(prompt: String) -> Self {
+        Self { prompt }
+    }
+
+    fn create_context(history: &[String]) -> String {
+        history.iter().map(|item| format!("- {}", item)).collect::<Vec<_>>().join("\n")
+    }
+
+    fn print_response(response: &AskResponse) {
+        match response {
+            AskResponse::Suggest(suggest_response) => {
+                println!("{}", "Suggestion:".green().bold());
+                println!("{}", format!("  - Command: {}", suggest_response.command.blue().bold()));
+                println!("{}", format!("  - Explanation: {}", suggest_response.explanation.italic()));
+            }
+            AskResponse::Ask(ask_response) => {
+                println!("{}", "Action required:".yellow().bold());
+                println!("{}", format!("  - Command: {}", ask_response.command.blue().bold()));
+                println!("{}", format!("  - Rationale: {}", ask_response.rationale.italic()));
+            }
+            AskResponse::Success(success_response) => {
+                println!("{}", "Success:".green().bold());
+                println!(
+                    "{}",
+                    format!("  - Success: {}", success_response.success.to_string().green().bold())
+                );
+            }
+        }
+    }
+}
+
+impl MagicCliSubcommand for AskSubcommand {
+    fn run(&self) -> Result<(), Box<dyn Error>> {
         let config = MagicCliConfig::load_config()?;
         let llm = MagicCliConfig::llm_from_config(&config)?;
         println!("{}", "Model details:".dimmed());
@@ -22,9 +56,9 @@ impl AskSubcommand {
 
         println!("\nGenerating initial response from model...");
 
-        let mut history: Vec<String> = vec![format!("User has requested the ask '{}'.", prompt)];
+        let mut history: Vec<String> = vec![format!("User has requested the ask '{}'.", self.prompt)];
         let ask_engine = AskEngine::new(llm);
-        let mut command = ask_engine.ask_command(prompt)?;
+        let mut command = ask_engine.ask_command(&self.prompt)?;
         loop {
             Self::print_response(&command);
             match command {
@@ -67,31 +101,5 @@ impl AskSubcommand {
         }
         println!("{}", "Successfully completed the ask".green().bold());
         Ok(())
-    }
-
-    fn create_context(history: &[String]) -> String {
-        history.iter().map(|item| format!("- {}", item)).collect::<Vec<_>>().join("\n")
-    }
-
-    fn print_response(response: &AskResponse) {
-        match response {
-            AskResponse::Suggest(suggest_response) => {
-                println!("{}", "Suggestion:".green().bold());
-                println!("{}", format!("  - Command: {}", suggest_response.command.blue().bold()));
-                println!("{}", format!("  - Explanation: {}", suggest_response.explanation.italic()));
-            }
-            AskResponse::Ask(ask_response) => {
-                println!("{}", "Action required:".yellow().bold());
-                println!("{}", format!("  - Command: {}", ask_response.command.blue().bold()));
-                println!("{}", format!("  - Rationale: {}", ask_response.rationale.italic()));
-            }
-            AskResponse::Success(success_response) => {
-                println!("{}", "Success:".green().bold());
-                println!(
-                    "{}",
-                    format!("  - Success: {}", success_response.success.to_string().green().bold())
-                );
-            }
-        }
     }
 }
