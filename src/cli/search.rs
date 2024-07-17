@@ -79,6 +79,7 @@ impl CliSearch {
             println!("{}", "Index updated successfully.".green());
         }
 
+
         let index = index_engine.load_index()?;
         let semantic_search_engine = SemanticSearchEngine::new(dyn_clone::clone_box(&*self.llm));
         let semantic_search_results = semantic_search_engine.top_k(prompt, index, 10)?;

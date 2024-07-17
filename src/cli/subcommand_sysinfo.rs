@@ -4,10 +4,18 @@ use colored::Colorize;
 
 use crate::core::Shell;
 
+use super::subcommand::MagicCliSubcommand;
+
 pub struct SysInfoSubcommand;
 
 impl SysInfoSubcommand {
-    pub fn run() -> Result<(), Box<dyn Error>> {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl MagicCliSubcommand for SysInfoSubcommand {
+    fn run(&self) -> Result<(), Box<dyn Error>> {
         let sysinfo = Shell::extract_env_info()?;
         println!("System information as detected by the CLI:");
         println!();

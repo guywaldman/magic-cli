@@ -2,6 +2,7 @@ mod command;
 mod config;
 mod mcli;
 mod search;
+mod subcommand;
 mod subcommand_ask;
 mod subcommand_config;
 mod subcommand_search;

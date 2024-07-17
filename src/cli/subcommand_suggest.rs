@@ -2,16 +2,24 @@ use std::error::Error;
 
 use crate::core::SuggestionEngine;
 
-use super::{command::CliCommand, config::MagicCliConfig};
+use super::{command::CliCommand, config::MagicCliConfig, subcommand::MagicCliSubcommand};
 
-pub struct SuggestSubcommand;
+pub struct SuggestSubcommand {
+    prompt: String,
+}
 
 impl SuggestSubcommand {
-    pub fn run(prompt: &str) -> Result<(), Box<dyn Error>> {
+    pub fn new(prompt: String) -> Self {
+        Self { prompt }
+    }
+}
+
+impl MagicCliSubcommand for SuggestSubcommand {
+    fn run(&self) -> Result<(), Box<dyn Error>> {
         let config = MagicCliConfig::load_config()?;
         let llm = MagicCliConfig::llm_from_config(&config)?;
         let explain_subcommand = SuggestionEngine::new(llm);
-        let command = explain_subcommand.suggest_command(prompt)?;
+        let command = explain_subcommand.suggest_command(&self.prompt)?;
         CliCommand::new(config.suggest).suggest_user_action_on_command(&command)?;
         Ok(())
     }

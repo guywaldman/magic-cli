@@ -4,7 +4,10 @@ use clap::Subcommand;
 use colored::Colorize;
 use inquire::Text;
 
-use super::config::{ConfigKeys, MagicCliConfig};
+use super::{
+    config::{ConfigKeys, MagicCliConfig},
+    subcommand::MagicCliSubcommand,
+};
 
 #[derive(Subcommand)]
 pub enum ConfigSubcommands {
@@ -31,11 +34,19 @@ pub enum ConfigSubcommands {
     Path,
 }
 
-pub struct ConfigSubcommand;
+pub struct ConfigSubcommand {
+    command: ConfigSubcommands,
+}
 
 impl ConfigSubcommand {
-    pub fn run(command: &ConfigSubcommands) -> Result<(), Box<dyn Error>> {
-        match command {
+    pub fn new(command: ConfigSubcommands) -> Self {
+        Self { command }
+    }
+}
+
+impl MagicCliSubcommand for ConfigSubcommand {
+    fn run(&self) -> Result<(), Box<dyn Error>> {
+        match &self.command {
             ConfigSubcommands::Set { key, value } => {
                 let key = match key {
                     Some(key) => key.to_string(),
