@@ -51,7 +51,26 @@ See the [releases page](https://github.com/guywaldman/magic-cli/releases) for bi
 
 ## Usage Tip
 
-Add a
+Add functions to your `~/.bashrc` or `~/.zshrc` to make formatting the prompts in the terminal easier (not requiring quotes).
+
+For example:
+
+```shell
+function mcs {
+  model_prompt="$*"
+  magic-cli suggest "$model_prompt"
+}
+
+function mcf {
+  model_prompt="$*"
+  magic-cli search "$model_prompt"
+}
+
+function mca {
+  model_prompt="$*"
+  magic-cli ask "$model_prompt"
+}
+```
 
 ## Features
 
