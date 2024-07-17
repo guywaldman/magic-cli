@@ -117,7 +117,7 @@ Arguments:
 
 > [!IMPORTANT]
 >
-> Note to the wise: If you're using a non-local LLM, be wary about the cost of the embeddings, especially for long prompts.
+> Word to the wise: If you're using a non-local LLM, be wary about the cost of the embeddings, especially for long shell histories.
 
 ### Ask to generate a command (experimental)
 
@@ -177,6 +177,7 @@ The currently suppprted configuration options are:
 - [ ] Windows support (PowerShell is supported, but Windows has not been tested properly)
 - [ ] Support for more LLM providers (e.g., [Anthropic](https://www.anthropic.com/))
 - [ ] Improve local embedding index (currently stored naively as a JSON, looked into SQLLite with vector extensions)
+
 - [ ] More test coverage
 
 ---
