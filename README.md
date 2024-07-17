@@ -115,6 +115,10 @@ Arguments:
   <PROMPT>  The prompt to search for
 ```
 
+> [!IMPORTANT]
+>
+> Note to the wise: If you're using a non-local LLM, be wary about the cost of the embeddings, especially for long prompts.
+
 ### Ask to generate a command (experimental)
 
 Supply a prompt with a task you want the model to perform, and watch it try to suggest a command to run to achieve the goal.
@@ -172,6 +176,7 @@ The currently suppprted configuration options are:
 
 - [ ] Windows support (PowerShell is supported, but Windows has not been tested properly)
 - [ ] Support for more LLM providers (e.g., [Anthropic](https://www.anthropic.com/))
+- [ ] Improve local embedding index (currently stored naively as a JSON, looked into SQLLite with vector extensions)
 - [ ] More test coverage
 
 ---
