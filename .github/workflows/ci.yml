@@ -5,13 +5,20 @@ on:
     branches: [main]
   push:
     branches: [main]
-    tags: ['**[0-9]+.[0-9]+.[0-9]+*']
+    tags: ["**[0-9]+.[0-9]+.[0-9]+*"]
 
 # Make sure CI fails on all warnings.
 env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
+  check-dnc:
+    name: check-dnc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/dnc.sh
+
   test:
     strategy:
       fail-fast: true
