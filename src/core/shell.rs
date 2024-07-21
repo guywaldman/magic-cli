@@ -105,8 +105,7 @@ pub struct Shell;
 impl Shell {
     pub fn extract_env_info() -> Result<SystemInfo, ShellError> {
         let os = sysinfo::System::name().ok_or(ShellError::FailedToExtractSystemInfo("Failed to get system name".to_string()))?;
-        let os_version =
-            sysinfo::System::os_version().ok_or(ShellError::FailedToExtractSystemInfo("Failed to extract OS version".to_string()))?;
+        let os_version = sysinfo::System::os_version().unwrap_or("current".to_owned());
         let arch =
             sysinfo::System::cpu_arch().ok_or(ShellError::FailedToExtractSystemInfo("Failed to get CPU architecture".to_string()))?;
         let shell_type = Self::current_shell_type()?;
