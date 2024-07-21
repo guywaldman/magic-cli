@@ -1,11 +1,10 @@
 use colored::Colorize;
 use inquire::Text;
+use orch::{execution::TextExecutorBuilder, lm::LanguageModel};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::core::Shell;
-
-use super::llm::Llm;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SuggestMode {
@@ -52,6 +51,9 @@ pub struct SuggestedCommand {
 
 #[derive(Error, Debug)]
 pub enum SuggestionEngineError {
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+
     #[error("Generation error: {0}")]
     Generation(String),
 
@@ -59,13 +61,13 @@ pub enum SuggestionEngineError {
     Serialization(String),
 }
 
-pub struct SuggestionEngine {
-    llm: Box<dyn Llm>,
+pub struct SuggestionEngine<'a> {
+    lm: &'a dyn LanguageModel,
 }
 
-impl SuggestionEngine {
-    pub fn new(llm: Box<dyn Llm>) -> Self {
-        Self { llm }
+impl<'a> SuggestionEngine<'a> {
+    pub fn new(lm: &'a dyn LanguageModel) -> Self {
+        Self { lm }
     }
 
     /// Suggests a command based on the given prompt.
@@ -79,7 +81,7 @@ impl SuggestionEngine {
     /// A [Result] containing the generated command suggestion or an error if there was a problem.
     ///
     // TODO: Move all CLI-related logic to the `cli` module.
-    pub fn suggest_command(&self, prompt: &str) -> Result<String, SuggestionEngineError> {
+    pub async fn suggest_command(&self, prompt: &str) -> Result<String, SuggestionEngineError> {
         println!(
             "{} {}",
             "Generating suggested command for prompt".dimmed(),
@@ -89,6 +91,7 @@ impl SuggestionEngine {
 
         let suggested_command = self
             .generate_suggested_command(prompt)
+            .await
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
 
         println!("{:>18}: {}", "Suggested command".dimmed(), suggested_command.command.blue().bold());
@@ -103,7 +106,9 @@ impl SuggestionEngine {
                     if revision_prompt.trim().is_empty() {
                         break;
                     }
-                    let revision_respose = self.generate_suggested_command_with_revision(&suggested_command, &revision_prompt)?;
+                    let revision_respose = self
+                        .generate_suggested_command_with_revision(&suggested_command, &revision_prompt)
+                        .await?;
                     let revised_command = revision_respose.command;
                     command.clone_from(&revised_command);
                     println!("{} {}", "Suggested command:".dimmed(), revised_command.blue().bold());
@@ -122,7 +127,7 @@ impl SuggestionEngine {
         Ok(command)
     }
 
-    pub(crate) fn generate_suggested_command(&self, prompt: &str) -> Result<SuggestedCommand, SuggestionEngineError> {
+    pub(crate) async fn generate_suggested_command(&self, prompt: &str) -> Result<SuggestedCommand, SuggestionEngineError> {
         let system_info = Shell::extract_env_info().unwrap();
 
         let system_prompt = format!("
@@ -145,10 +150,16 @@ impl SuggestionEngine {
         - CPU architecture: {arch}
         ", shell = system_info.shell, os = system_info.os, os_version = system_info.os_version, arch = system_info.arch);
 
-        let response = self
-            .llm
-            .generate(prompt, &system_prompt)
-            .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
+        let executor = TextExecutorBuilder::new()
+            .with_lm(self.lm)
+            .with_preamble(&system_prompt)
+            .try_build()
+            .map_err(|e| SuggestionEngineError::Configuration(e.to_string()))?;
+        let response = executor
+            .execute(prompt)
+            .await
+            .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?
+            .content;
         if !response.trim().starts_with('{') || !response.trim().ends_with('}') {
             return Err(SuggestionEngineError::Generation(
                 "Response from LLM is not in JSON format".to_string(),
@@ -158,7 +169,7 @@ impl SuggestionEngine {
         Ok(parsed_response)
     }
 
-    pub(crate) fn generate_suggested_command_with_revision(
+    pub(crate) async fn generate_suggested_command_with_revision(
         &self,
         previous_command: &SuggestedCommand,
         prompt: &str,
@@ -196,10 +207,16 @@ impl SuggestionEngine {
             previous_command.command, previous_command.explanation, prompt
         );
 
-        let response = self
-            .llm
-            .generate(&prompt, &system_prompt)
-            .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
+        let executor = TextExecutorBuilder::new()
+            .with_lm(self.lm)
+            .with_preamble(&system_prompt)
+            .try_build()
+            .map_err(|e| SuggestionEngineError::Configuration(e.to_string()))?;
+        let response = executor
+            .execute(&prompt)
+            .await
+            .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?
+            .content;
         let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
         Ok(parsed_response)
     }
@@ -244,13 +261,12 @@ impl SuggestionEngine {
 #[cfg(test)]
 
 mod tests {
-    use crate::llm::ollama::{config::OllamaConfig, models::OllamaGenerateResponse, ollama_llm::OllamaLocalLlm};
-
     use super::*;
     use httpmock::{Method::POST, MockServer};
+    use orch::lm::{LanguageModelBuilder, OllamaBuilder, OllamaGenerateResponse};
 
-    #[test]
-    fn test_simple_suggestion() {
+    #[tokio::test]
+    async fn test_simple_suggestion() {
         let mock_generation_response = OllamaGenerateResponse {
             model: "mockstral:latest".to_string(),
             created_at: "2024-06-25T01:40:42.192756+00:00".to_string(),
@@ -260,6 +276,7 @@ mod tests {
             })
             .unwrap(),
             total_duration: 12345,
+            context: None,
         };
 
         let mock_server = MockServer::start();
@@ -270,16 +287,16 @@ mod tests {
                 .body(serde_json::to_string(&mock_generation_response).unwrap());
         });
 
-        let ollama_config = OllamaConfig {
-            base_url: Some(mock_server.base_url()),
-            model: Some("mockstral:latest".to_string()),
-            embedding_model: Some("mockembed:latest".to_string()),
-        };
+        let base_url = mock_server.base_url();
+        let ollama = OllamaBuilder::new()
+            .with_base_url(base_url)
+            .with_model("mockstral:latest".to_string())
+            .with_embeddings_model("mockembed:latest".to_string())
+            .try_build()
+            .unwrap();
+        let suggestion_engine = SuggestionEngine::new(&ollama);
 
-        let ollama = OllamaLocalLlm::new(ollama_config.clone());
-        let suggestion_engine = SuggestionEngine::new(Box::new(ollama));
-
-        let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt");
+        let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt").await;
         mock_generation_api.assert();
         assert!(suggested_command.is_ok());
         let suggested_command = suggested_command.unwrap();

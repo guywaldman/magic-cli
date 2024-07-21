@@ -1,5 +1,8 @@
 use std::error::Error;
 
+use async_trait::async_trait;
+
+#[async_trait]
 pub trait MagicCliSubcommand {
-    fn run(&self) -> Result<(), Box<dyn Error>>;
+    async fn run(&self) -> Result<(), Box<dyn Error>>;
 }

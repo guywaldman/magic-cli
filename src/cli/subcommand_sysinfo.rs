@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use async_trait::async_trait;
 use colored::Colorize;
 
 use crate::core::Shell;
@@ -14,8 +15,9 @@ impl SysInfoSubcommand {
     }
 }
 
+#[async_trait]
 impl MagicCliSubcommand for SysInfoSubcommand {
-    fn run(&self) -> Result<(), Box<dyn Error>> {
+    async fn run(&self) -> Result<(), Box<dyn Error>> {
         let sysinfo = Shell::extract_env_info()?;
         println!("System information as detected by the CLI:");
         println!();

@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use async_trait::async_trait;
 use clap::Subcommand;
 use colored::Colorize;
 use inquire::Text;
@@ -44,8 +45,9 @@ impl ConfigSubcommand {
     }
 }
 
+#[async_trait]
 impl MagicCliSubcommand for ConfigSubcommand {
-    fn run(&self) -> Result<(), Box<dyn Error>> {
+    async fn run(&self) -> Result<(), Box<dyn Error>> {
         match &self.command {
             ConfigSubcommands::Set { key, value } => {
                 let key = match key {

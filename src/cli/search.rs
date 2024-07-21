@@ -1,11 +1,12 @@
 use chrono::Duration;
 use colored::Colorize;
 use inquire::{list_option::ListOption, InquireError, Select};
+use orch::lm::LanguageModel;
 use std::{collections::HashSet, time::SystemTime};
 use thiserror::Error;
 
 use crate::core::{
-    HayStackItem, IndexEngine, IndexError, IndexMetadata, Llm, SemanticSearchEngine, SemanticSearchEngineError, Shell, ShellError,
+    HayStackItem, IndexEngine, IndexError, IndexMetadata, SemanticSearchEngine, SemanticSearchEngineError, Shell, ShellError,
 };
 
 use super::config::{MagicCliConfig, MagicCliConfigError};
@@ -29,15 +30,15 @@ pub(crate) enum CliSearchError {
 }
 
 pub(crate) struct CliSearch {
-    llm: Box<dyn Llm>,
+    lm: Box<dyn LanguageModel>,
 }
 
 impl CliSearch {
-    pub fn new(llm: Box<dyn Llm>) -> Self {
-        Self { llm }
+    pub fn new(llm: Box<dyn LanguageModel>) -> Self {
+        Self { lm: llm }
     }
 
-    pub fn search_command(&self, prompt: &str, index: bool) -> Result<String, CliSearchError> {
+    pub async fn search_command(&self, prompt: &str, index: bool) -> Result<String, CliSearchError> {
         let index_dir_path = MagicCliConfig::get_config_dir_path()?.join("index");
         if !index_dir_path.exists() {
             std::fs::create_dir_all(&index_dir_path).unwrap();
@@ -45,7 +46,7 @@ impl CliSearch {
         let index_path = index_dir_path.join("index.json");
         let index_metadata_path = index_dir_path.join("index_metadata.json");
         let index_engine = IndexEngine::new(
-            SemanticSearchEngine::new(dyn_clone::clone_box(&*self.llm)),
+            SemanticSearchEngine::new(dyn_clone::clone_box(&*self.lm)),
             index_path,
             index_metadata_path,
         );
@@ -75,13 +76,13 @@ impl CliSearch {
                 .enumerate()
                 .map(|(i, item)| HayStackItem { id: i, data: item.clone() })
                 .collect();
-            index_engine.store_index(hay_stack)?;
+            index_engine.store_index(hay_stack).await?;
             println!("{}", "Index updated successfully.".green());
         }
 
         let index = index_engine.load_index()?;
-        let semantic_search_engine = SemanticSearchEngine::new(dyn_clone::clone_box(&*self.llm));
-        let semantic_search_results = semantic_search_engine.top_k(prompt, index, 10)?;
+        let semantic_search_engine = SemanticSearchEngine::new(dyn_clone::clone_box(&*self.lm));
+        let semantic_search_results = semantic_search_engine.top_k(prompt, index, 10).await?;
 
         if semantic_search_results.is_empty() {
             println!("{}", "No relevant results found.".yellow().bold());

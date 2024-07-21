@@ -54,32 +54,32 @@ enum Commands {
 pub struct MagicCli;
 
 impl MagicCli {
-    pub fn run(&self, args: &[String]) -> Result<(), Box<dyn Error>> {
+    pub async fn run(&self, args: &[String]) -> Result<(), Box<dyn Error>> {
         let clap_cli = ClapCli::parse_from(args);
 
         match clap_cli.command {
             Commands::Suggest { prompt } => {
-                Self::run_subcommmand(SuggestSubcommand::new(prompt));
+                Self::run_subcommmand(SuggestSubcommand::new(prompt)).await;
             }
             Commands::Ask { prompt } => {
-                Self::run_subcommmand(AskSubcommand::new(prompt));
+                Self::run_subcommmand(AskSubcommand::new(prompt)).await;
             }
             Commands::Config { command } => {
-                Self::run_subcommmand(ConfigSubcommand::new(command));
+                Self::run_subcommmand(ConfigSubcommand::new(command)).await;
             }
             Commands::Search { prompt, index } => {
-                Self::run_subcommmand(SearchSubcommand::new(prompt, index));
+                Self::run_subcommmand(SearchSubcommand::new(prompt, index)).await;
             }
             Commands::SysInfo => {
-                Self::run_subcommmand(SysInfoSubcommand::new());
+                Self::run_subcommmand(SysInfoSubcommand::new()).await;
             }
         }
 
         Ok(())
     }
 
-    fn run_subcommmand(subcommand: impl MagicCliSubcommand) {
-        match subcommand.run() {
+    async fn run_subcommmand(subcommand: impl MagicCliSubcommand) {
+        match subcommand.run().await {
             Ok(_) => {}
             Err(err) => {
                 eprintln!("{}", format!("Error: {}", err).red().bold());

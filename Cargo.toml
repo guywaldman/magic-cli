@@ -7,12 +7,15 @@ repository = "https://github.com/guywaldman/magic-cli"
 edition = "2021"
 
 [dependencies]
+# DNC: This shouldn't have 
+orch = { path = "../orch/core", version = "0.0.12" }
+# Note: This is currently a dependency which could be inside `orch` (see https://github.com/guywaldman/orch/issues/10).
+orch_response = { path = "../orch/response", version = "0.0.12" }
 chrono = "0.4.38"
 clap = { version = "4.5.7", features = ["derive"] }
 clipboard = "0.5.0"
 colored = "2.1.0"
 const_format = "0.2.32"
-orch = "0.0.3"
 home = "0.5.9"
 httpmock = "0.7.0"
 inquire = "0.7.5"
@@ -22,6 +25,8 @@ simsimd = "4.4.0"
 thiserror = "1.0.61"
 tokio = "1.38.0"
 sysinfo = "0.30.12"
+async-trait = "0.1.81"
+dyn-clone = "1.0.17"
 
 [dev-dependencies]
 chrono = "0.4.38"

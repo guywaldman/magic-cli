@@ -1,16 +1,13 @@
-
-use crate::llm::ollama::config::OllamaConfig;
-
-use crate::llm::openai::config::OpenAiConfig;
+use crate::lm::{OllamaConfig, OpenAiConfig};
 
 use crate::cli::config::MagicCliConfigError;
-use crate::core::{Llm, LlmProvider, SuggestConfig};
+use crate::core::SuggestConfig;
 use colored::Colorize;
 use home::home_dir;
 use inquire::list_option::ListOption;
 use inquire::Select;
+use orch::lm::{LanguageModel, LanguageModelBuilder, LanguageModelProvider, OllamaBuilder, OpenAiBuilder};
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::{
     fmt::{Display, Formatter},
     path::PathBuf,
@@ -20,13 +17,12 @@ use super::ConfigKeys;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MagicCliConfig {
-    
     #[serde(rename = "ollama")]
     pub ollama_config: OllamaConfig,
-    
+
     #[serde(rename = "openai")]
     pub openai_config: OpenAiConfig,
-    pub llm: LlmProvider,
+    pub llm: LanguageModelProvider,
     pub suggest: SuggestConfig,
 }
 
@@ -137,20 +133,40 @@ impl MagicCliConfig {
         Ok(choice.1.to_string())
     }
 
-    pub fn llm_from_config(config: &MagicCliConfig) -> Result<Box<dyn Llm>, Box<dyn Error>> {
-        
-        if config.llm == LlmProvider::Ollama {
-            use crate::llm::ollama::ollama_llm::OllamaLocalLlm;
-            return Ok(Box::new(OllamaLocalLlm::new(config.ollama_config.clone())));
+    pub fn lm_from_config(config: &MagicCliConfig) -> Result<Box<dyn LanguageModel>, MagicCliConfigError> {
+        match config.llm {
+            LanguageModelProvider::Ollama => {
+                let Some(model) = config.ollama_config.model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("model".to_owned()));
+                };
+                let Some(embedding_model) = config.ollama_config.embedding_model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("embedding_model".to_owned()));
+                };
+                let Some(base_url) = config.ollama_config.base_url.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("base_url".to_owned()));
+                };
+                let ollama = OllamaBuilder::new()
+                    .with_base_url(base_url)
+                    .with_model(model)
+                    .with_embeddings_model(embedding_model)
+                    .try_build()
+                    .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
+                Ok(Box::new(ollama))
+            }
+            LanguageModelProvider::OpenAi => {
+                let Some(model) = config.openai_config.model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("model".to_owned()));
+                };
+                let Some(embedding_model) = config.openai_config.embedding_model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("embedding_model".to_owned()));
+                };
+                let openai = OpenAiBuilder::new()
+                    .with_model(model)
+                    .with_embeddings_model(embedding_model)
+                    .try_build()
+                    .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
+                Ok(Box::new(openai))
+            }
         }
-        
-        if config.llm == LlmProvider::OpenAi {
-            use crate::llm::openai::openai_llm::OpenAiLlm;
-            return Ok(Box::new(OpenAiLlm::new(config.openai_config.clone())));
-        }
-        Err(Box::new(MagicCliConfigError::LlmNotSupported {
-            llm: config.llm.to_string(),
-            feature: "ollama".to_string(),
-        }))
     }
 }

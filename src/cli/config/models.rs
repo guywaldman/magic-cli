@@ -8,6 +8,9 @@ pub enum MagicCliConfigError {
     #[error("Configuration key not found: {0}")]
     MissingConfigKey(String),
 
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+
     #[error("Could not parse configuration file: {0}")]
     ParsingError(String),
 
@@ -25,7 +28,4 @@ pub enum MagicCliConfigError {
 
     #[error("Error converting from or to 'SuggestMode': {0}")]
     SuggestModeError(#[from] SuggestModeError),
-
-    #[error("LLM {llm} not supported, please make sure you compiled with the '{feature}' feature enabled")]
-    LlmNotSupported { llm: String, feature: String },
 }
