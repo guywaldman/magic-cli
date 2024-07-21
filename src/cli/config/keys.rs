@@ -75,7 +75,6 @@ impl ConfigKeys {
                     }),
                 )
             );
-            #[cfg(feature = "ollama")]
             keys.insert(
                 "ollama.base_url".to_string(),
                 ConfigurationKey::new(
@@ -87,7 +86,7 @@ impl ConfigKeys {
                     }),
                 )
             );
-            #[cfg(feature = "ollama")]
+            
             keys.insert(
                 "ollama.model".to_string(),
                 ConfigurationKey::new(
@@ -99,7 +98,7 @@ impl ConfigKeys {
                     }),
                 )
             );
-            #[cfg(feature = "ollama")]
+            
             keys.insert(
                 "ollama.embedding_model".to_string(),
                 ConfigurationKey::new(
@@ -111,7 +110,7 @@ impl ConfigKeys {
                     }),
                 )
             );
-            #[cfg(feature = "openai")]
+            
             keys.insert(
                 "openai.api_key".to_string(),
                 ConfigurationKey::new(
@@ -123,7 +122,7 @@ impl ConfigKeys {
                     }),
                 ).secret()
             );
-            #[cfg(feature = "openai")]
+            
             keys.insert(
                 "openai.model".to_string(),
                 ConfigurationKey::new(
@@ -135,7 +134,7 @@ impl ConfigKeys {
                     }),
                 )
             );
-            #[cfg(feature = "openai")]
+            
             keys.insert(
                 "openai.embedding_model".to_string(),
                 ConfigurationKey::new(

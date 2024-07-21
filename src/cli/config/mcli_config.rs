@@ -1,6 +1,6 @@
-#[cfg(feature = "ollama")]
+
 use crate::llm::ollama::config::OllamaConfig;
-#[cfg(feature = "openai")]
+
 use crate::llm::openai::config::OpenAiConfig;
 
 use crate::cli::config::MagicCliConfigError;
@@ -20,10 +20,10 @@ use super::ConfigKeys;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MagicCliConfig {
-    #[cfg(feature = "ollama")]
+    
     #[serde(rename = "ollama")]
     pub ollama_config: OllamaConfig,
-    #[cfg(feature = "openai")]
+    
     #[serde(rename = "openai")]
     pub openai_config: OpenAiConfig,
     pub llm: LlmProvider,
@@ -138,12 +138,12 @@ impl MagicCliConfig {
     }
 
     pub fn llm_from_config(config: &MagicCliConfig) -> Result<Box<dyn Llm>, Box<dyn Error>> {
-        #[cfg(feature = "ollama")]
+        
         if config.llm == LlmProvider::Ollama {
             use crate::llm::ollama::ollama_llm::OllamaLocalLlm;
             return Ok(Box::new(OllamaLocalLlm::new(config.ollama_config.clone())));
         }
-        #[cfg(feature = "openai")]
+        
         if config.llm == LlmProvider::OpenAi {
             use crate::llm::openai::openai_llm::OpenAiLlm;
             return Ok(Box::new(OpenAiLlm::new(config.openai_config.clone())));
