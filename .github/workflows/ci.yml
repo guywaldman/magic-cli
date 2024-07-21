@@ -7,6 +7,10 @@ on:
     branches: [main]
     tags: ['**[0-9]+.[0-9]+.[0-9]+*']
 
+# Make sure CI fails on all warnings.
+env:
+  RUSTFLAGS: "-Dwarnings"
+
 jobs:
   test:
     strategy:
@@ -35,3 +39,10 @@ jobs:
           components: rustfmt
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
+
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features
