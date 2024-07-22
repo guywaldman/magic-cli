@@ -1,6 +1,6 @@
 use crate::lm::{OllamaConfig, OpenAiConfig};
 
-use crate::cli::config::MagicCliConfigError;
+use crate::cli::config::{self, MagicCliConfigError};
 use crate::core::SuggestConfig;
 use colored::Colorize;
 use home::home_dir;
@@ -15,7 +15,7 @@ use std::{
 
 use super::ConfigKeys;
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MagicCliConfigOptions {
     #[serde(rename = "ollama")]
     pub ollama_config: Option<OllamaConfig>,
@@ -24,6 +24,17 @@ pub struct MagicCliConfigOptions {
     pub openai_config: Option<OpenAiConfig>,
     pub llm: Option<LanguageModelProvider>,
     pub suggest: Option<SuggestConfig>,
+}
+
+impl Default for MagicCliConfigOptions {
+    fn default() -> Self {
+        Self {
+            ollama_config: Some(OllamaConfig::default()),
+            openai_config: Some(OpenAiConfig::default()),
+            llm: Some(LanguageModelProvider::Ollama),
+            suggest: Some(SuggestConfig::default()),
+        }
+    }
 }
 
 impl Display for MagicCliConfigOptions {
@@ -42,6 +53,26 @@ pub struct MagicCliConfig {
 impl MagicCliConfig {
     pub fn new(config_path: Option<PathBuf>) -> Self {
         Self { config_path }
+    }
+
+    /// Initializes the configuration file if it doesn't exist.
+    pub fn initialize_config(&self) -> Result<(), MagicCliConfigError> {
+        let config_path = self.get_config_file_path()?;
+        if !config_path.exists() {
+            println!(
+                "{} '{}'.",
+                "Configuration file not found, creating default configuration file at path".yellow(),
+                config_path.to_str().unwrap().yellow()
+            );
+            let config_dir_path = Self::get_config_default_dir_path()?;
+            if !config_dir_path.exists() {
+                std::fs::create_dir_all(config_dir_path).map_err(MagicCliConfigError::IoError)?;
+            }
+            let config = MagicCliConfigOptions::default();
+            let serialized_config = serde_json::to_string(&config).map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
+            std::fs::write(config_path, serialized_config).map_err(MagicCliConfigError::IoError)?;
+        }
+        Ok(())
     }
 
     pub fn load_config(&self) -> Result<MagicCliConfigOptions, MagicCliConfigError> {

@@ -74,10 +74,19 @@ pub struct SuggestResponseError {
     pub error: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuggestConfig {
     pub mode: Option<SuggestMode>,
     pub add_to_history: Option<bool>,
+}
+
+impl Default for SuggestConfig {
+    fn default() -> Self {
+        Self {
+            mode: Some(SuggestMode::Execution),
+            add_to_history: Some(false),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -10,6 +10,7 @@ pub enum AskResponseOption {
     Suggestion(SuggestionResponse),
     Ask(AskResponse),
     Success(SuccessResponse),
+    Fail(FailResponse),
 }
 
 #[derive(Variant, serde::Deserialize)]
@@ -50,6 +51,20 @@ pub struct AskResponse {
 pub struct SuccessResponse {
     #[schema(description = "Whether the user request has been fulfilled", example = "true")]
     pub success: bool,
+}
+
+#[derive(Variant, serde::Deserialize)]
+#[variant(
+    variant = "Fail",
+    scenario = "You are not confident enough in the command you want to suggest",
+    description = "Fail"
+)]
+pub struct FailResponse {
+    #[schema(
+        description = "The error message, should be descriptive",
+        example = "'I could not understand the instructions' or 'I could not find a suitable command'"
+    )]
+    pub error: String,
 }
 
 #[derive(Debug, Error)]
@@ -94,6 +109,8 @@ impl AskEngine {
         let prompt = format!("ORIGINAL PROMPT: {}\nCONTEXT: {}", prompt, context);
         let executor = StructuredExecutorBuilder::new()
             .with_lm(&*self.lm)
+            .with_preamble(Self::PREAMBLE)
+            .with_options(Box::new(variants!(AskResponseOption)))
             .try_build()
             .map_err(|e| AskEngineError::Configuration(e.to_string()))?;
         let response = executor

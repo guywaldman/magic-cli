@@ -35,10 +35,11 @@ impl AskSubcommand {
                 println!("  - Command: {}", ask_response.command.blue().bold());
                 println!("  - Rationale: {}", ask_response.rationale.italic());
             }
-            AskResponseOption::Success(success_response) => {
-                println!("{}", "Success:".green().bold());
-                println!("  - Success: {}", success_response.success.to_string().green().bold());
+            AskResponseOption::Fail(fail_response) => {
+                println!("{}", "Failed to complete the ask:".red().bold());
+                println!("{}", fail_response.error.red().bold());
             }
+            AskResponseOption::Success(_success_response) => {}
         }
     }
 }
@@ -64,6 +65,7 @@ impl MagicCliSubcommand for AskSubcommand {
         let mut command = ask_engine.ask_command(&self.prompt).await?;
         loop {
             Self::print_response(&command);
+
             match command {
                 AskResponseOption::Success(_) => {
                     println!("{}", "Successfully completed the ask".green().bold());
@@ -108,9 +110,14 @@ impl MagicCliSubcommand for AskSubcommand {
 
                     continue;
                 }
+                AskResponseOption::Fail(fail_response) => {
+                    println!("{}", "Failed to complete the ask:".red().bold());
+                    println!("{}", fail_response.error.red().bold());
+                    break;
+                }
             }
         }
-        println!("{}", "Successfully completed the ask".green().bold());
+
         Ok(())
     }
 }

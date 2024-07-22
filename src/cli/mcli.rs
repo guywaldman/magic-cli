@@ -72,6 +72,7 @@ impl MagicCli {
         } = clap_cli;
 
         let config = MagicCliConfig::new(config);
+        config.initialize_config()?;
 
         match subcommand {
             Commands::Suggest { prompt, output_only, .. } => {
