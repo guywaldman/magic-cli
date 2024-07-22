@@ -14,7 +14,7 @@ pub enum MagicCliConfigError {
     #[error("Could not parse configuration file: {0}")]
     ParsingError(String),
 
-    #[error("I/O error: {0}")]
+    #[error("I/O error: {0}: {0}")]
     IoError(#[from] std::io::Error),
 
     #[error("Invalid config key: {0}")]

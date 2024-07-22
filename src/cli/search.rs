@@ -39,7 +39,7 @@ impl CliSearch {
     }
 
     pub async fn search_command(&self, prompt: &str, index: bool) -> Result<String, CliSearchError> {
-        let index_dir_path = MagicCliConfig::get_config_dir_path()?.join("index");
+        let index_dir_path = MagicCliConfig::get_config_default_dir_path()?.join("index");
         if !index_dir_path.exists() {
             std::fs::create_dir_all(&index_dir_path).unwrap();
         }

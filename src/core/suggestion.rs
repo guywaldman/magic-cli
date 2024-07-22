@@ -1,6 +1,10 @@
 use colored::Colorize;
 use inquire::Text;
-use orch::{execution::TextExecutorBuilder, lm::LanguageModel};
+use orch::{
+    execution::{StructuredExecutorBuilder, TextExecutorBuilder},
+    lm::LanguageModel,
+    response::{variants, Variant, Variants},
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -37,10 +41,43 @@ impl Default for SuggestMode {
     }
 }
 
+#[derive(Variants, serde::Deserialize)]
+pub enum SuggestResponseVariant {
+    Command(SuggestResponseCommand),
+    Error(SuggestResponseError),
+}
+
+#[derive(Variant, serde::Deserialize)]
+#[variant(
+    variant = "Command",
+    scenario = "You are confident enough in the command you want to suggest",
+    description = "Suggestion for a command to run and its explanation. The command should be simple, adhere to the user's request and system information, and should only contain placeholders if deemed necessary."
+)]
+pub struct SuggestResponseCommand {
+    #[schema(description = "The command to run", example = "kubectl get pods")]
+    pub command: String,
+    #[schema(description = "The explanation for the command", example = "List all Kubernetes pods")]
+    pub explanation: String,
+}
+
+#[derive(Variant, serde::Deserialize)]
+#[variant(
+    variant = "Error",
+    scenario = "You are not confident enough in the command you want to suggest",
+    description = "Error message for the user"
+)]
+pub struct SuggestResponseError {
+    #[schema(
+        description = "The error message, should be descriptive",
+        example = "'I could not understand the instructions' or 'I could not find a suitable command'"
+    )]
+    pub error: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SuggestConfig {
-    pub mode: SuggestMode,
-    pub add_to_history: bool,
+    pub mode: Option<SuggestMode>,
+    pub add_to_history: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,13 +88,13 @@ pub struct SuggestedCommand {
 
 #[derive(Error, Debug)]
 pub enum SuggestionEngineError {
-    #[error("Configuration error: {0}")]
+    #[error("{0}")]
     Configuration(String),
 
-    #[error("Generation error: {0}")]
+    #[error("{0}")]
     Generation(String),
 
-    #[error("Serialization or deserialization error: {0}")]
+    #[error("{0}")]
     Serialization(String),
 }
 
@@ -81,48 +118,58 @@ impl<'a> SuggestionEngine<'a> {
     /// A [Result] containing the generated command suggestion or an error if there was a problem.
     ///
     // TODO: Move all CLI-related logic to the `cli` module.
-    pub async fn suggest_command(&self, prompt: &str) -> Result<String, SuggestionEngineError> {
-        println!(
-            "{} {}",
-            "Generating suggested command for prompt".dimmed(),
-            format!("\"{}\"...", prompt).dimmed(),
-        );
-        println!();
+    pub async fn suggest_command(&self, prompt: &str, output_only: bool) -> Result<String, SuggestionEngineError> {
+        if !output_only {
+            println!(
+                "{} {}",
+                "Generating suggested command for prompt".dimmed(),
+                format!("\"{}\"...", prompt).dimmed(),
+            );
+            println!();
+        }
 
         let suggested_command = self
             .generate_suggested_command(prompt)
             .await
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
 
-        println!("{:>18}: {}", "Suggested command".dimmed(), suggested_command.command.blue().bold());
-        println!("{:>18}: {}", "Explanation".dimmed(), suggested_command.explanation.italic());
-        println!();
+        if !output_only {
+            println!("{:>18}: {}", "Suggested command".dimmed(), suggested_command.command.blue().bold());
+            println!("{:>18}: {}", "Explanation".dimmed(), suggested_command.explanation.italic());
+            println!();
+        }
 
         let mut command = suggested_command.command.clone();
-        loop {
-            let revise_command = Text::new("Provide instructions on how to revise the command (leave empty to skip)").prompt();
-            match revise_command {
-                Ok(revision_prompt) => {
-                    if revision_prompt.trim().is_empty() {
+
+        if !output_only {
+            // In "output only" mode, skip the interactive prompts.
+            loop {
+                let revise_command = Text::new("Provide instructions on how to revise the command (leave empty to skip)").prompt();
+                match revise_command {
+                    Ok(revision_prompt) => {
+                        if revision_prompt.trim().is_empty() {
+                            break;
+                        }
+                        let revision_respose = self
+                            .generate_suggested_command_with_revision(&suggested_command, &revision_prompt)
+                            .await?;
+                        let revised_command = revision_respose.command;
+                        command.clone_from(&revised_command);
+                        println!("{} {}", "Suggested command:".dimmed(), revised_command.blue().bold());
+                        println!();
+                    }
+                    Err(e) => {
+                        println!("{}", e.to_string().red());
                         break;
                     }
-                    let revision_respose = self
-                        .generate_suggested_command_with_revision(&suggested_command, &revision_prompt)
-                        .await?;
-                    let revised_command = revision_respose.command;
-                    command.clone_from(&revised_command);
-                    println!("{} {}", "Suggested command:".dimmed(), revised_command.blue().bold());
-                    println!();
-                }
-                Err(e) => {
-                    println!("{}", e.to_string().red());
-                    break;
-                }
-            };
+                };
+            }
+            command = self.populate_placeholders_in_command(&command);
         }
-        println!();
 
-        command = self.populate_placeholders_in_command(&command);
+        if !output_only {
+            println!();
+        }
 
         Ok(command)
     }
@@ -130,29 +177,26 @@ impl<'a> SuggestionEngine<'a> {
     pub(crate) async fn generate_suggested_command(&self, prompt: &str) -> Result<SuggestedCommand, SuggestionEngineError> {
         let system_info = Shell::extract_env_info().unwrap();
 
-        let system_prompt = format!("
+        let preamble = format!(
+            "
         You are a an assistant that provides suggestions for a command to run on the user's command line.
-        Please only provide a JSON which contains the fields:
-        - 'command' for the command,
-        - 'explanation' for a very short explanation about the command or notes you may have
-        ...and nothing else! Just those fields.
-        For the command, if there are arguments, use the format '<argument_name>', for example 'kubectl logs -n <namespace> <pod-name>'.
-
-        IMPORTANT NOTES:
-        1. Remember to format the response as JSON.
-        2. Make sure that *any* placeholder (even things such as /path/to/file) are formatted as '<placeholder_name>'.
-        3. Try to accommodate for the user's environment (adjust the suggestion based on their shell, OS, architecture, etc.). See below the system information.
 
         The user's system information is:
         - Shell: {shell}
         - OS: {os}
         - OS version: {os_version}
         - CPU architecture: {arch}
-        ", shell = system_info.shell, os = system_info.os, os_version = system_info.os_version, arch = system_info.arch);
+        ",
+            shell = system_info.shell,
+            os = system_info.os,
+            os_version = system_info.os_version,
+            arch = system_info.arch
+        );
 
-        let executor = TextExecutorBuilder::new()
+        let executor = StructuredExecutorBuilder::new()
             .with_lm(self.lm)
-            .with_preamble(&system_prompt)
+            .with_preamble(&preamble)
+            .with_options(Box::new(variants!(SuggestResponseVariant)))
             .try_build()
             .map_err(|e| SuggestionEngineError::Configuration(e.to_string()))?;
         let response = executor
@@ -160,13 +204,14 @@ impl<'a> SuggestionEngine<'a> {
             .await
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?
             .content;
-        if !response.trim().starts_with('{') || !response.trim().ends_with('}') {
-            return Err(SuggestionEngineError::Generation(
-                "Response from LLM is not in JSON format".to_string(),
-            ));
+
+        match response {
+            SuggestResponseVariant::Command(command) => Ok(SuggestedCommand {
+                command: command.command,
+                explanation: command.explanation,
+            }),
+            SuggestResponseVariant::Error(error) => Err(SuggestionEngineError::Generation(error.error)),
         }
-        let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
-        Ok(parsed_response)
     }
 
     pub(crate) async fn generate_suggested_command_with_revision(

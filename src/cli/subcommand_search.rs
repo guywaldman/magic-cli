@@ -2,7 +2,12 @@ use std::error::Error;
 
 use async_trait::async_trait;
 
-use super::{command::CliCommand, config::MagicCliConfig, search::CliSearch, subcommand::MagicCliSubcommand};
+use super::{
+    command::CliCommand,
+    config::MagicCliConfigError,
+    search::CliSearch,
+    subcommand::{MagicCliRunOptions, MagicCliSubcommand},
+};
 
 pub struct SearchSubcommand {
     prompt: String,
@@ -17,14 +22,16 @@ impl SearchSubcommand {
 
 #[async_trait]
 impl MagicCliSubcommand for SearchSubcommand {
-    async fn run(&self) -> Result<(), Box<dyn Error>> {
-        let config = MagicCliConfig::load_config()?;
-        let lm = MagicCliConfig::lm_from_config(&config)?;
+    async fn run(&self, options: MagicCliRunOptions) -> Result<(), Box<dyn Error>> {
+        let config = options.config;
+        let lm = config.lm_from_config()?;
         let cli_search = CliSearch::new(dyn_clone::clone_box(&*lm));
         let selected_command = cli_search.search_command(&self.prompt, self.index).await?;
-
-        let config = MagicCliConfig::load_config()?;
-        CliCommand::new(config.suggest).suggest_user_action_on_command(&selected_command)?;
+        let config_values = config.load_config()?;
+        let Some(suggest_config) = config_values.suggest.clone() else {
+            return Err(Box::new(MagicCliConfigError::MissingConfigKey("suggest".to_string())));
+        };
+        CliCommand::new(suggest_config).suggest_user_action_on_command(&selected_command)?;
         Ok(())
     }
 }

@@ -7,7 +7,7 @@ use inquire::Text;
 
 use super::{
     config::{ConfigKeys, MagicCliConfig},
-    subcommand::MagicCliSubcommand,
+    subcommand::{MagicCliRunOptions, MagicCliSubcommand},
 };
 
 #[derive(Subcommand)]
@@ -47,7 +47,9 @@ impl ConfigSubcommand {
 
 #[async_trait]
 impl MagicCliSubcommand for ConfigSubcommand {
-    async fn run(&self) -> Result<(), Box<dyn Error>> {
+    async fn run(&self, options: MagicCliRunOptions) -> Result<(), Box<dyn Error>> {
+        let config = &options.config;
+
         match &self.command {
             ConfigSubcommands::Set { key, value } => {
                 let key = match key {
@@ -60,7 +62,7 @@ impl MagicCliSubcommand for ConfigSubcommand {
                     None => Text::new(&format!("{} {}: ", "Enter the value for the key", key.magenta())).prompt()?,
                 };
 
-                match MagicCliConfig::set(&key, &value) {
+                match config.set(&key, &value) {
                     Ok(_) => println!("{}", "Configuration updated.".green().bold()),
                     Err(err) => {
                         eprintln!("{}", format!("CLI configuration error: {}", err).red().bold());
@@ -73,7 +75,7 @@ impl MagicCliSubcommand for ConfigSubcommand {
                     Some(key) => key.to_string(),
                     None => MagicCliConfig::select_key()?,
                 };
-                match MagicCliConfig::get(&key) {
+                match config.get(&key) {
                     Ok(value) => println!("{}", value),
                     Err(err) => {
                         eprintln!("{}", format!("CLI configuration error: {}", err).red().bold());
@@ -87,7 +89,7 @@ impl MagicCliSubcommand for ConfigSubcommand {
                 let mut sorted_config_keys = config_keys.values().collect::<Vec<_>>();
                 sorted_config_keys.sort_by(|a, b| a.prio.cmp(&b.prio).then(a.key.cmp(&b.key)));
                 for (i, item) in sorted_config_keys.iter().enumerate() {
-                    let config_value = MagicCliConfig::get(&item.key)?;
+                    let config_value = config.get(&item.key)?;
                     let config_value = config_value.replace("null", "-");
                     let config_value = if item.is_secret {
                         "*".repeat(config_value.len())
@@ -112,8 +114,8 @@ impl MagicCliSubcommand for ConfigSubcommand {
                 println!("{}", "Configuration reset to default values.".green().bold());
             }
             ConfigSubcommands::Path => {
-                let config = MagicCliConfig::get_config_file_path()?;
-                println!("{}", config.display());
+                let default_config_path = MagicCliConfig::get_default_config_file_path()?;
+                println!("{}", default_config_path.display());
             }
         }
         Ok(())

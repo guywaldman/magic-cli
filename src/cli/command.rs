@@ -9,6 +9,9 @@ use crate::core::{Shell, ShellError, SuggestConfig, SuggestMode};
 
 #[derive(Debug, Error)]
 pub(crate) enum CliCommandError {
+    #[error("Configuration error: {0}")]
+    Config(String),
+
     #[error("Clipboard error: {0}")]
     Clipboard(String),
 
@@ -40,7 +43,10 @@ impl CliCommand {
     }
 
     pub fn suggest_user_action_on_command(&self, command: &str) -> Result<CommandRunResult, CliCommandError> {
-        match self.suggest_config.mode {
+        let Some(suggest_mode) = self.suggest_config.mode else {
+            return Err(CliCommandError::Config("Missing suggest.mode configuration".to_string()));
+        };
+        match suggest_mode {
             SuggestMode::Clipboard => self.handle_clipboard_operation(command),
             SuggestMode::Execution => self.handle_execution_operation(command),
         }
@@ -116,7 +122,10 @@ impl CliCommand {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let status = output.status;
 
-        if self.suggest_config.add_to_history {
+        let Some(add_to_history) = self.suggest_config.add_to_history else {
+            return Err(CliCommandError::Config("Missing suggest.add_to_history configuration".to_string()));
+        };
+        if add_to_history {
             Shell::add_command_to_history(command)?;
         }
 
