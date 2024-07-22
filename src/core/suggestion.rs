@@ -41,13 +41,13 @@ impl Default for SuggestMode {
     }
 }
 
-#[derive(Variants, serde::Deserialize)]
+#[derive(Variants, serde::Deserialize, serde::Serialize)]
 pub enum SuggestResponseVariant {
     Command(SuggestResponseCommand),
     Error(SuggestResponseError),
 }
 
-#[derive(Variant, serde::Deserialize)]
+#[derive(Variant, serde::Deserialize, serde::Serialize)]
 #[variant(
     variant = "Command",
     scenario = "You are confident enough in the command you want to suggest",
@@ -60,7 +60,7 @@ pub struct SuggestResponseCommand {
     pub explanation: String,
 }
 
-#[derive(Variant, serde::Deserialize)]
+#[derive(Variant, serde::Deserialize, serde::Serialize)]
 #[variant(
     variant = "Error",
     scenario = "You are not confident enough in the command you want to suggest",
@@ -306,19 +306,22 @@ impl<'a> SuggestionEngine<'a> {
 #[cfg(test)]
 
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use httpmock::{Method::POST, MockServer};
-    use orch::lm::{LanguageModelBuilder, OllamaBuilder, OllamaGenerateResponse};
+    use orch::lm::{LanguageModelBuilder, OllamaBuilder, OllamaGenerateResponseSuccess};
 
     #[tokio::test]
     async fn test_simple_suggestion() {
-        let mock_generation_response = OllamaGenerateResponse {
+        let mock_generation_response = OllamaGenerateResponseSuccess {
             model: "mockstral:latest".to_string(),
             created_at: "2024-06-25T01:40:42.192756+00:00".to_string(),
-            response: serde_json::to_string(&SuggestedCommand {
-                command: "Mock command".to_string(),
-                explanation: "Mock command explanation".to_string(),
-            })
+            response: serde_json::to_string(&HashMap::from([
+                ("command".to_string(), "Mock command".to_string()),
+                ("explanation".to_string(), "Mock command explanation".to_string()),
+                ("response_type".to_string(), "Command".to_string()),
+            ]))
             .unwrap(),
             total_duration: 12345,
             context: None,
@@ -342,6 +345,7 @@ mod tests {
         let suggestion_engine = SuggestionEngine::new(&ollama);
 
         let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt").await;
+
         mock_generation_api.assert();
         assert!(suggested_command.is_ok());
         let suggested_command = suggested_command.unwrap();
