@@ -1,7 +1,10 @@
-use std::{cell::OnceCell, collections::HashMap};
 use orch::lm::LanguageModelProvider;
+use std::{cell::OnceCell, collections::HashMap};
 
-use crate::{core::{SuggestConfig, SuggestMode}, lm::{OllamaConfig, OpenAiConfig}};
+use crate::{
+    core::{SuggestConfig, SuggestMode},
+    lm::{OllamaConfig, OpenAiConfig},
+};
 
 use super::{MagicCliConfigError, MagicCliConfigOptions};
 
@@ -96,7 +99,6 @@ impl ConfigKeys {
                     }),
                 )
             );
-            
             keys.insert(
                 "ollama.model".to_string(),
                 ConfigurationKey::new(
@@ -111,7 +113,6 @@ impl ConfigKeys {
                     }),
                 )
             );
-            
             keys.insert(
                 "ollama.embedding_model".to_string(),
                 ConfigurationKey::new(
@@ -126,7 +127,6 @@ impl ConfigKeys {
                     }),
                 )
             );
-            
             keys.insert(
                 "openai.api_key".to_string(),
                 ConfigurationKey::new(
@@ -141,7 +141,6 @@ impl ConfigKeys {
                     }),
                 ).secret()
             );
-            
             keys.insert(
                 "openai.model".to_string(),
                 ConfigurationKey::new(
@@ -156,7 +155,6 @@ impl ConfigKeys {
                     }),
                 )
             );
-            
             keys.insert(
                 "openai.embedding_model".to_string(),
                 ConfigurationKey::new(
