@@ -1,11 +1,14 @@
 use colored::Colorize;
 use inquire::Text;
+use orch::{
+    execution::{StructuredExecutorBuilder, TextExecutorBuilder},
+    lm::LanguageModel,
+    response::{variants, Variant, Variants},
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::core::Shell;
-
-use super::llm::Llm;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SuggestMode {
@@ -38,10 +41,52 @@ impl Default for SuggestMode {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Variants, serde::Deserialize, serde::Serialize)]
+pub enum SuggestResponseVariant {
+    Command(SuggestResponseCommand),
+    Error(SuggestResponseError),
+}
+
+#[derive(Variant, serde::Deserialize, serde::Serialize)]
+#[variant(
+    variant = "Command",
+    scenario = "You are confident enough in the command you want to suggest",
+    description = "Suggestion for a command to run and its explanation. The command should be simple, adhere to the user's request and system information, and should only contain placeholders if deemed necessary."
+)]
+pub struct SuggestResponseCommand {
+    #[schema(description = "The command to run", example = "kubectl get pods")]
+    pub command: String,
+    #[schema(description = "The explanation for the command", example = "List all Kubernetes pods")]
+    pub explanation: String,
+}
+
+#[derive(Variant, serde::Deserialize, serde::Serialize)]
+#[variant(
+    variant = "Error",
+    scenario = "You are not confident enough in the command you want to suggest",
+    description = "Error message for the user"
+)]
+pub struct SuggestResponseError {
+    #[schema(
+        description = "The error message, should be descriptive",
+        example = "'I could not understand the instructions' or 'I could not find a suitable command'"
+    )]
+    pub error: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuggestConfig {
-    pub mode: SuggestMode,
-    pub add_to_history: bool,
+    pub mode: Option<SuggestMode>,
+    pub add_to_history: Option<bool>,
+}
+
+impl Default for SuggestConfig {
+    fn default() -> Self {
+        Self {
+            mode: Some(SuggestMode::Execution),
+            add_to_history: Some(false),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,20 +97,23 @@ pub struct SuggestedCommand {
 
 #[derive(Error, Debug)]
 pub enum SuggestionEngineError {
-    #[error("Generation error: {0}")]
+    #[error("{0}")]
+    Configuration(String),
+
+    #[error("{0}")]
     Generation(String),
 
-    #[error("Serialization or deserialization error: {0}")]
+    #[error("{0}")]
     Serialization(String),
 }
 
-pub struct SuggestionEngine {
-    llm: Box<dyn Llm>,
+pub struct SuggestionEngine<'a> {
+    lm: &'a dyn LanguageModel,
 }
 
-impl SuggestionEngine {
-    pub fn new(llm: Box<dyn Llm>) -> Self {
-        Self { llm }
+impl<'a> SuggestionEngine<'a> {
+    pub fn new(lm: &'a dyn LanguageModel) -> Self {
+        Self { lm }
     }
 
     /// Suggests a command based on the given prompt.
@@ -79,86 +127,103 @@ impl SuggestionEngine {
     /// A [Result] containing the generated command suggestion or an error if there was a problem.
     ///
     // TODO: Move all CLI-related logic to the `cli` module.
-    pub fn suggest_command(&self, prompt: &str) -> Result<String, SuggestionEngineError> {
-        println!(
-            "{} {}",
-            "Generating suggested command for prompt".dimmed(),
-            format!("\"{}\"...", prompt).dimmed(),
-        );
-        println!();
+    pub async fn suggest_command(&self, prompt: &str, output_only: bool) -> Result<String, SuggestionEngineError> {
+        if !output_only {
+            println!(
+                "{} {}",
+                "Generating suggested command for prompt".dimmed(),
+                format!("\"{}\"...", prompt).dimmed(),
+            );
+            println!();
+        }
 
         let suggested_command = self
             .generate_suggested_command(prompt)
+            .await
             .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
 
-        println!("{:>18}: {}", "Suggested command".dimmed(), suggested_command.command.blue().bold());
-        println!("{:>18}: {}", "Explanation".dimmed(), suggested_command.explanation.italic());
-        println!();
+        if !output_only {
+            println!("{:>18}: {}", "Suggested command".dimmed(), suggested_command.command.blue().bold());
+            println!("{:>18}: {}", "Explanation".dimmed(), suggested_command.explanation.italic());
+            println!();
+        }
 
         let mut command = suggested_command.command.clone();
-        loop {
-            let revise_command = Text::new("Provide instructions on how to revise the command (leave empty to skip)").prompt();
-            match revise_command {
-                Ok(revision_prompt) => {
-                    if revision_prompt.trim().is_empty() {
+
+        if !output_only {
+            // In "output only" mode, skip the interactive prompts.
+            loop {
+                let revise_command = Text::new("Provide instructions on how to revise the command (leave empty to skip)").prompt();
+                match revise_command {
+                    Ok(revision_prompt) => {
+                        if revision_prompt.trim().is_empty() {
+                            break;
+                        }
+                        let revision_respose = self
+                            .generate_suggested_command_with_revision(&suggested_command, &revision_prompt)
+                            .await?;
+                        let revised_command = revision_respose.command;
+                        command.clone_from(&revised_command);
+                        println!("{} {}", "Suggested command:".dimmed(), revised_command.blue().bold());
+                        println!();
+                    }
+                    Err(e) => {
+                        println!("{}", e.to_string().red());
                         break;
                     }
-                    let revision_respose = self.generate_suggested_command_with_revision(&suggested_command, &revision_prompt)?;
-                    let revised_command = revision_respose.command;
-                    command.clone_from(&revised_command);
-                    println!("{} {}", "Suggested command:".dimmed(), revised_command.blue().bold());
-                    println!();
-                }
-                Err(e) => {
-                    println!("{}", e.to_string().red());
-                    break;
-                }
-            };
+                };
+            }
+            command = self.populate_placeholders_in_command(&command);
         }
-        println!();
 
-        command = self.populate_placeholders_in_command(&command);
+        if !output_only {
+            println!();
+        }
 
         Ok(command)
     }
 
-    pub(crate) fn generate_suggested_command(&self, prompt: &str) -> Result<SuggestedCommand, SuggestionEngineError> {
+    pub(crate) async fn generate_suggested_command(&self, prompt: &str) -> Result<SuggestedCommand, SuggestionEngineError> {
         let system_info = Shell::extract_env_info().unwrap();
 
-        let system_prompt = format!("
+        let preamble = format!(
+            "
         You are a an assistant that provides suggestions for a command to run on the user's command line.
-        Please only provide a JSON which contains the fields:
-        - 'command' for the command,
-        - 'explanation' for a very short explanation about the command or notes you may have
-        ...and nothing else! Just those fields.
-        For the command, if there are arguments, use the format '<argument_name>', for example 'kubectl logs -n <namespace> <pod-name>'.
-
-        IMPORTANT NOTES:
-        1. Remember to format the response as JSON.
-        2. Make sure that *any* placeholder (even things such as /path/to/file) are formatted as '<placeholder_name>'.
-        3. Try to accommodate for the user's environment (adjust the suggestion based on their shell, OS, architecture, etc.). See below the system information.
 
         The user's system information is:
         - Shell: {shell}
         - OS: {os}
         - OS version: {os_version}
         - CPU architecture: {arch}
-        ", shell = system_info.shell, os = system_info.os, os_version = system_info.os_version, arch = system_info.arch);
+        ",
+            shell = system_info.shell,
+            os = system_info.os,
+            os_version = system_info.os_version,
+            arch = system_info.arch
+        );
 
-        let response = self
-            .llm
-            .generate(prompt, &system_prompt)
-            .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
-        if !response.trim().starts_with('{') || !response.trim().ends_with('}') {
-            return Err(SuggestionEngineError::Generation(
-                "Response from LLM is not in JSON format".to_string(),
-            ));
+        let executor = StructuredExecutorBuilder::new()
+            .with_lm(self.lm)
+            .with_preamble(&preamble)
+            .with_options(Box::new(variants!(SuggestResponseVariant)))
+            .try_build()
+            .map_err(|e| SuggestionEngineError::Configuration(e.to_string()))?;
+        let response = executor
+            .execute(prompt)
+            .await
+            .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?
+            .content;
+
+        match response {
+            SuggestResponseVariant::Command(command) => Ok(SuggestedCommand {
+                command: command.command,
+                explanation: command.explanation,
+            }),
+            SuggestResponseVariant::Error(error) => Err(SuggestionEngineError::Generation(error.error)),
         }
-        let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
-        Ok(parsed_response)
     }
 
-    pub(crate) fn generate_suggested_command_with_revision(
+    pub(crate) async fn generate_suggested_command_with_revision(
         &self,
         previous_command: &SuggestedCommand,
         prompt: &str,
@@ -196,10 +261,16 @@ impl SuggestionEngine {
             previous_command.command, previous_command.explanation, prompt
         );
 
-        let response = self
-            .llm
-            .generate(&prompt, &system_prompt)
-            .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?;
+        let executor = TextExecutorBuilder::new()
+            .with_lm(self.lm)
+            .with_preamble(&system_prompt)
+            .try_build()
+            .map_err(|e| SuggestionEngineError::Configuration(e.to_string()))?;
+        let response = executor
+            .execute(&prompt)
+            .await
+            .map_err(|e| SuggestionEngineError::Generation(e.to_string()))?
+            .content;
         let parsed_response = serde_json::from_str(&response).map_err(|e| SuggestionEngineError::Serialization(e.to_string()))?;
         Ok(parsed_response)
     }
@@ -242,24 +313,27 @@ impl SuggestionEngine {
 }
 
 #[cfg(test)]
-#[cfg(feature = "ollama")]
+
 mod tests {
-    use crate::llm::ollama::{config::OllamaConfig, models::OllamaGenerateResponse, ollama_llm::OllamaLocalLlm};
+    use std::collections::HashMap;
 
     use super::*;
     use httpmock::{Method::POST, MockServer};
+    use orch::lm::{LanguageModelBuilder, OllamaBuilder, OllamaGenerateResponseSuccess};
 
-    #[test]
-    fn test_simple_suggestion() {
-        let mock_generation_response = OllamaGenerateResponse {
+    #[tokio::test]
+    async fn test_simple_suggestion() {
+        let mock_generation_response = OllamaGenerateResponseSuccess {
             model: "mockstral:latest".to_string(),
             created_at: "2024-06-25T01:40:42.192756+00:00".to_string(),
-            response: serde_json::to_string(&SuggestedCommand {
-                command: "Mock command".to_string(),
-                explanation: "Mock command explanation".to_string(),
-            })
+            response: serde_json::to_string(&HashMap::from([
+                ("command".to_string(), "Mock command".to_string()),
+                ("explanation".to_string(), "Mock command explanation".to_string()),
+                ("response_type".to_string(), "Command".to_string()),
+            ]))
             .unwrap(),
             total_duration: 12345,
+            context: None,
         };
 
         let mock_server = MockServer::start();
@@ -270,16 +344,17 @@ mod tests {
                 .body(serde_json::to_string(&mock_generation_response).unwrap());
         });
 
-        let ollama_config = OllamaConfig {
-            base_url: Some(mock_server.base_url()),
-            model: Some("mockstral:latest".to_string()),
-            embedding_model: Some("mockembed:latest".to_string()),
-        };
+        let base_url = mock_server.base_url();
+        let ollama = OllamaBuilder::new()
+            .with_base_url(base_url)
+            .with_model("mockstral:latest".to_string())
+            .with_embeddings_model("mockembed:latest".to_string())
+            .try_build()
+            .unwrap();
+        let suggestion_engine = SuggestionEngine::new(&ollama);
 
-        let ollama = OllamaLocalLlm::new(ollama_config.clone());
-        let suggestion_engine = SuggestionEngine::new(Box::new(ollama));
+        let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt").await;
 
-        let suggested_command = suggestion_engine.generate_suggested_command("Mock prompt");
         mock_generation_api.assert();
         assert!(suggested_command.is_ok());
         let suggested_command = suggested_command.unwrap();

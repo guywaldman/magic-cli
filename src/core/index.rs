@@ -42,10 +42,11 @@ impl IndexEngine {
         }
     }
 
-    pub fn store_index(&self, hay_stack: Vec<HayStackItem>) -> Result<(), IndexError> {
+    pub async fn store_index(&self, hay_stack: Vec<HayStackItem>) -> Result<(), IndexError> {
         let index = self
             .semantic_search_engine
             .generate_index(hay_stack)
+            .await
             .map_err(IndexError::IndexGeneration)?;
         let index_data = IndexData { items: index };
         let serialized_index = serde_json::to_string(&index_data).map_err(IndexError::Marshalling)?;

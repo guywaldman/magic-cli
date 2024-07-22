@@ -1,16 +1,13 @@
-#[cfg(feature = "ollama")]
-use crate::llm::ollama::config::OllamaConfig;
-#[cfg(feature = "openai")]
-use crate::llm::openai::config::OpenAiConfig;
+use crate::lm::{OllamaConfig, OpenAiConfig};
 
 use crate::cli::config::MagicCliConfigError;
-use crate::core::{Llm, LlmProvider, SuggestConfig};
+use crate::core::SuggestConfig;
 use colored::Colorize;
 use home::home_dir;
 use inquire::list_option::ListOption;
 use inquire::Select;
+use orch::lm::{LanguageModel, LanguageModelBuilder, LanguageModelProvider, OllamaBuilder, OpenAiBuilder};
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::{
     fmt::{Display, Formatter},
     path::PathBuf,
@@ -18,27 +15,75 @@ use std::{
 
 use super::ConfigKeys;
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct MagicCliConfig {
-    #[cfg(feature = "ollama")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MagicCliConfigOptions {
     #[serde(rename = "ollama")]
-    pub ollama_config: OllamaConfig,
-    #[cfg(feature = "openai")]
+    pub ollama_config: Option<OllamaConfig>,
+
     #[serde(rename = "openai")]
-    pub openai_config: OpenAiConfig,
-    pub llm: LlmProvider,
-    pub suggest: SuggestConfig,
+    pub openai_config: Option<OpenAiConfig>,
+    pub llm: Option<LanguageModelProvider>,
+    pub suggest: Option<SuggestConfig>,
 }
 
-impl Display for MagicCliConfig {
+impl Default for MagicCliConfigOptions {
+    fn default() -> Self {
+        Self {
+            ollama_config: Some(OllamaConfig::default()),
+            openai_config: Some(OpenAiConfig::default()),
+            llm: Some(LanguageModelProvider::Ollama),
+            suggest: Some(SuggestConfig::default()),
+        }
+    }
+}
+
+impl Display for MagicCliConfigOptions {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", serde_json::to_string_pretty(&self).unwrap())
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct MagicCliConfig {
+    /// The path to the configuration file.
+    /// The default is used (`~/.config/magic_cli/config.json`) if this is `None`.
+    pub config_path: Option<PathBuf>,
+}
+
 impl MagicCliConfig {
-    pub fn load_config() -> Result<MagicCliConfig, MagicCliConfigError> {
-        let config_dir_path = Self::get_config_dir_path()?;
+    pub fn new(config_path: Option<PathBuf>) -> Self {
+        Self { config_path }
+    }
+
+    /// Initializes the configuration file if it doesn't exist.
+    pub fn initialize_config(&self) -> Result<(), MagicCliConfigError> {
+        let config_path = self.get_config_file_path()?;
+        if !config_path.exists() {
+            println!(
+                "{} '{}'.",
+                "Configuration file not found, creating default configuration file at path".yellow(),
+                config_path.to_str().unwrap().yellow()
+            );
+            let config_dir_path = Self::get_config_default_dir_path()?;
+            if !config_dir_path.exists() {
+                std::fs::create_dir_all(config_dir_path).map_err(MagicCliConfigError::IoError)?;
+            }
+            let config = MagicCliConfigOptions::default();
+            let serialized_config = serde_json::to_string(&config).map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
+            std::fs::write(config_path, serialized_config).map_err(MagicCliConfigError::IoError)?;
+        }
+        Ok(())
+    }
+
+    pub fn load_config(&self) -> Result<MagicCliConfigOptions, MagicCliConfigError> {
+        if let Some(config_path) = &self.config_path {
+            // Custom config is used.
+            return Self::load_config_from_path(config_path);
+        }
+
+        // Default config is used.
+
+        let config_dir_path = Self::get_config_default_dir_path()?;
         if !config_dir_path.exists() {
             eprintln!(
                 "{} '{}'.",
@@ -47,7 +92,7 @@ impl MagicCliConfig {
             );
             std::fs::create_dir_all(config_dir_path).map_err(MagicCliConfigError::IoError)?;
         }
-        let config_path = Self::get_config_file_path()?;
+        let config_path = Self::get_default_config_file_path()?;
         if !config_path.exists() {
             // Config doesn't exist - create it with default values.
             eprintln!(
@@ -55,39 +100,19 @@ impl MagicCliConfig {
                 "Configuration file not found, creating default configuration file at path".yellow(),
                 config_path.to_str().unwrap().yellow()
             );
-            let config = MagicCliConfig::default();
+            let config = MagicCliConfigOptions::default();
             let serialized_config = serde_json::to_string(&config).map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
             std::fs::write(config_path, serialized_config).map_err(MagicCliConfigError::IoError)?;
             println!("{}", "Default configuration file created successfully.".green());
             return Ok(config);
         }
-        let deserialized_config = serde_json::from_str(&std::fs::read_to_string(config_path).map_err(MagicCliConfigError::IoError)?)
-            .map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
-        Ok(deserialized_config)
-    }
 
-    pub fn get_config_file_path() -> Result<PathBuf, MagicCliConfigError> {
-        let config_dir_path = Self::get_config_dir_path()?;
-        let config_path = config_dir_path.join("config.json");
-        Ok(config_path)
-    }
-
-    pub fn get_config_dir_path() -> Result<PathBuf, MagicCliConfigError> {
-        let home = home_dir().unwrap();
-        let config_dir_path = home.join(".config").join("magic_cli");
-        Ok(config_dir_path)
-    }
-
-    pub fn reset() -> Result<(), MagicCliConfigError> {
-        let default_config = MagicCliConfig::default();
-        let serialized_config = serde_json::to_string(&default_config).map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
-        std::fs::write(Self::get_config_file_path()?, serialized_config).map_err(MagicCliConfigError::IoError)?;
-        Ok(())
+        Self::load_config_from_path(&config_path)
     }
 
     // TODO: Support arrays.
-    pub fn get(key: &str) -> Result<String, MagicCliConfigError> {
-        let config_path = Self::get_config_file_path()?;
+    pub fn get(&self, key: &str) -> Result<String, MagicCliConfigError> {
+        let config_path = self.get_config_file_path()?;
         let config_content = std::fs::read_to_string(config_path).map_err(MagicCliConfigError::IoError)?;
         let deserialized_config: serde_json::Value =
             serde_json::from_str(&config_content).map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
@@ -101,15 +126,17 @@ impl MagicCliConfig {
         Ok(curr_value.to_string())
     }
 
-    pub fn set(key: &str, value: &str) -> Result<(), MagicCliConfigError> {
-        let config_path = Self::get_config_file_path()?;
-        let mut config = Self::load_config()?.clone();
+    pub fn set(&self, key: &str, value: &str) -> Result<(), MagicCliConfigError> {
+        let config_path = self.get_config_file_path()?;
         let config_keys = ConfigKeys::keys();
         let config_keys = config_keys.get().unwrap();
         if !config_keys.contains_key(key) {
             return Err(MagicCliConfigError::InvalidConfigKey(key.to_string()));
         }
         let config_value = config_keys.get(key).unwrap();
+
+        // Change the value in the config.
+        let mut config = Self::load_config_from_path(&config_path)?;
         (config_value.update_fn)(&mut config, value)?;
 
         let serialized_config = serde_json::to_string(&config).map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
@@ -137,20 +164,84 @@ impl MagicCliConfig {
         Ok(choice.1.to_string())
     }
 
-    pub fn llm_from_config(config: &MagicCliConfig) -> Result<Box<dyn Llm>, Box<dyn Error>> {
-        #[cfg(feature = "ollama")]
-        if config.llm == LlmProvider::Ollama {
-            use crate::llm::ollama::ollama_llm::OllamaLocalLlm;
-            return Ok(Box::new(OllamaLocalLlm::new(config.ollama_config.clone())));
+    pub fn lm_from_config(&self) -> Result<Box<dyn LanguageModel>, MagicCliConfigError> {
+        let config_path = self.get_config_file_path()?;
+        let config = Self::load_config_from_path(&config_path)?;
+        let Some(llm) = config.llm else {
+            return Err(MagicCliConfigError::MissingConfigKey("llm".to_owned()));
+        };
+        match llm {
+            LanguageModelProvider::Ollama => {
+                let Some(ollama_config) = config.ollama_config else {
+                    return Err(MagicCliConfigError::MissingConfigKey("ollama".to_owned()));
+                };
+                let Some(model) = ollama_config.model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("model".to_owned()));
+                };
+                let Some(embedding_model) = ollama_config.embedding_model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("embedding_model".to_owned()));
+                };
+                let Some(base_url) = ollama_config.base_url.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("base_url".to_owned()));
+                };
+                let ollama = OllamaBuilder::new()
+                    .with_base_url(base_url)
+                    .with_model(model)
+                    .with_embeddings_model(embedding_model)
+                    .try_build()
+                    .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
+                Ok(Box::new(ollama))
+            }
+            LanguageModelProvider::OpenAi => {
+                let Some(openai_config) = config.openai_config else {
+                    return Err(MagicCliConfigError::MissingConfigKey("openai".to_owned()));
+                };
+                let Some(model) = openai_config.model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("model".to_owned()));
+                };
+                let Some(embedding_model) = openai_config.embedding_model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("embedding_model".to_owned()));
+                };
+                let openai = OpenAiBuilder::new()
+                    .with_model(model)
+                    .with_embeddings_model(embedding_model)
+                    .try_build()
+                    .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
+                Ok(Box::new(openai))
+            }
         }
-        #[cfg(feature = "openai")]
-        if config.llm == LlmProvider::OpenAi {
-            use crate::llm::openai::openai_llm::OpenAiLlm;
-            return Ok(Box::new(OpenAiLlm::new(config.openai_config.clone())));
+    }
+
+    pub fn load_config_from_path(config_path: &PathBuf) -> Result<MagicCliConfigOptions, MagicCliConfigError> {
+        let deserialized_config = serde_json::from_str(&std::fs::read_to_string(config_path).map_err(MagicCliConfigError::IoError)?)
+            .map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
+        Ok(deserialized_config)
+    }
+
+    pub fn get_config_file_path(&self) -> Result<PathBuf, MagicCliConfigError> {
+        if let Some(config_path) = &self.config_path {
+            return Ok(config_path.clone());
         }
-        Err(Box::new(MagicCliConfigError::LlmNotSupported {
-            llm: config.llm.to_string(),
-            feature: "ollama".to_string(),
-        }))
+
+        Self::get_default_config_file_path()
+    }
+
+    pub fn get_default_config_file_path() -> Result<PathBuf, MagicCliConfigError> {
+        let config_dir_path = Self::get_config_default_dir_path()?;
+        let config_path = config_dir_path.join("config.json");
+        Ok(config_path)
+    }
+
+    pub fn get_config_default_dir_path() -> Result<PathBuf, MagicCliConfigError> {
+        let home = home_dir().unwrap();
+        let config_dir_path = home.join(".config").join("magic_cli");
+        Ok(config_dir_path)
+    }
+
+    pub fn reset() -> Result<(), MagicCliConfigError> {
+        let default_config = MagicCliConfigOptions::default();
+        let serialized_config = serde_json::to_string(&default_config).map_err(|e| MagicCliConfigError::ParsingError(e.to_string()))?;
+        std::fs::write(Self::get_default_config_file_path()?, serialized_config).map_err(MagicCliConfigError::IoError)?;
+        Ok(())
     }
 }

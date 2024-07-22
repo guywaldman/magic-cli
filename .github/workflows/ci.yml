@@ -5,19 +5,30 @@ on:
     branches: [main]
   push:
     branches: [main]
-    tags: ['**[0-9]+.[0-9]+.[0-9]+*']
+    tags: ["**[0-9]+.[0-9]+.[0-9]+*"]
 
 # Make sure CI fails on all warnings.
 env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
+  check-dnc:
+    name: check-dnc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install ripgrep
+      - run: scripts/dnc.sh
+
   test:
     strategy:
       fail-fast: true
       matrix:
         target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
-    name: cargo test
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - run: |
@@ -29,8 +40,38 @@ jobs:
           target: ${{ matrix.target }}
       - run: cargo test --all-features
 
+  integration-test:
+    strategy:
+      fail-fast: true
+      matrix:
+        target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
+        python-version: ["3.10"]
+    name: Integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ matrix.target }}
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt install libxcb-xfixes0-dev
+          python -m venv venv && source venv/bin/activate
+          pip install -r requirements.txt
+      - run: cargo build --release
+        name: Build binary
+      - name: Run integration tests
+        run: |
+          source venv/bin/activate
+          python -m pytest -s
+
   formatting:
-    name: cargo fmt
+    name: Formatting and linting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

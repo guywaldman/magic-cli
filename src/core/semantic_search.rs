@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
+use orch::lm::LanguageModel;
 use serde::{Deserialize, Serialize};
 use simsimd::SpatialSimilarity;
 use thiserror::Error;
-
-use super::Llm;
+use tokio::{sync::Mutex, task::JoinSet};
 
 #[derive(Debug, Error)]
 pub enum SemanticSearchEngineError {
@@ -30,20 +32,25 @@ pub struct IndexItem {
 }
 
 pub struct SemanticSearchEngine {
-    llm: Box<dyn Llm>,
+    lm: Arc<Mutex<Box<dyn LanguageModel>>>,
 }
 
 impl SemanticSearchEngine {
     const SIMILARITY_THRESHOLD: f64 = 0.2;
 
-    pub fn new(llm: Box<dyn Llm>) -> Self {
-        Self { llm }
+    pub fn new(lm: Box<dyn LanguageModel>) -> Self {
+        Self {
+            lm: Arc::new(Mutex::new(lm)),
+        }
     }
 
-    pub fn top_k(&self, item: &str, index: Vec<IndexItem>, k: usize) -> Result<Vec<SemanticSearchResult>, SemanticSearchEngineError> {
+    pub async fn top_k(&self, item: &str, index: Vec<IndexItem>, k: usize) -> Result<Vec<SemanticSearchResult>, SemanticSearchEngineError> {
         let needle_embedding = self
-            .llm
+            .lm
+            .lock()
+            .await
             .generate_embedding(item)
+            .await
             .map_err(|e| SemanticSearchEngineError::Embedding(e.to_string()))?;
         let mut similarities: Vec<SemanticSearchResult> = index
             .iter()
@@ -66,20 +73,35 @@ impl SemanticSearchEngine {
         Ok(similarities.into_iter().rev().take(k).collect())
     }
 
-    pub fn generate_index(&self, hay_stack: Vec<HayStackItem>) -> Result<Vec<IndexItem>, SemanticSearchEngineError> {
-        let hay_stack_embeddings: Vec<IndexItem> = hay_stack
-            .iter()
-            .map(|item| {
-                let embedding = self.llm.generate_embedding(&item.data).unwrap();
-                IndexItem {
-                    item: HayStackItem {
-                        id: item.id,
-                        data: item.data.clone(),
-                    },
-                    embedding,
+    pub async fn generate_index(&self, hay_stack: Vec<HayStackItem>) -> Result<Vec<IndexItem>, SemanticSearchEngineError> {
+        let mut js: JoinSet<(Vec<f32>, usize)> = JoinSet::new();
+        let data_items = hay_stack.iter().map(|item| (item.data.clone(), item.id)).collect::<Vec<_>>();
+        let data_items_clone = data_items.clone();
+        for item in data_items {
+            let lm = self.lm.clone();
+            js.spawn(async move {
+                let embedding = {
+                    let lm_locked = lm.lock().await;
+                    lm_locked.generate_embedding(&item.0).await.unwrap()
+                };
+                (embedding, item.1)
+            });
+        }
+        let mut embeddings: Vec<IndexItem> = Vec::new();
+        while let Some(result) = js.join_next().await {
+            match result {
+                Ok(res) => {
+                    embeddings.push(IndexItem {
+                        item: HayStackItem {
+                            id: data_items_clone[res.1].1,
+                            data: data_items_clone[res.1].0.clone(),
+                        },
+                        embedding: res.0,
+                    });
                 }
-            })
-            .collect();
-        Ok(hay_stack_embeddings)
+                Err(e) => return Err(SemanticSearchEngineError::Embedding(e.to_string())),
+            }
+        }
+        Ok(embeddings)
     }
 }
