@@ -1,6 +1,6 @@
 [package]
 name = "magic-cli"
-version = "0.0.2"
+version = "0.0.3"
 description = "Command line utility to make you a magician in the terminal"
 homepage = "https://github.com/guywaldman/magic-cli"
 repository = "https://github.com/guywaldman/magic-cli"

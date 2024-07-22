@@ -1,3 +1,15 @@
+## Version 0.0.3
+
+- A default configuration file is now created if it doesn't exist
+- The default suggest mode is now `clipboard` instead of `unsafe-execution`
+- The `suggest` subcommand now supports an `--output-only` flag to skip the interactive prompts (revisions and execution)
+- A `--config` flag is now supported for all subcommands, where you can specify a custom configuration file
+- Improved error messages (a lot more work is required)
+- Under the hood:
+  - Added integration with the [orch](https://github.com/guywaldman/orch) library
+  - Added basic integration tests
+  - Improved CI
+
 ## Version 0.0.2
 
 - Fixed an issue where error messages were not shown when subcommands failed

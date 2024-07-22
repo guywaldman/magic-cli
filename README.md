@@ -1,11 +1,12 @@
-
 # Magic CLI
-![Magic CLI logo](/assets/logo_sm.png)
 
+![Magic CLI logo](/assets/logo_sm.png)
 
 ![GitHub Actions CI](https://github.com/guywaldman/magic-cli/actions/workflows/ci.yml/badge.svg)
 
 Magic CLI is a command line utility which uses LLMs to help you use the command line more efficiently, inspired by projects such as [Amazon Q (prev. Fig terminal)](https://fig.io/) and [GitHub Copilot for CLI](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-in-the-command-line).
+
+`magic-cli` relies on the [orch](https://github.com/guywaldman/orch) library for LLM interactions (execution, orchestration, model alignment, etc.).
 
 > **Read the [announcement blog post](https://guywaldman.com/posts/introducing-magic-cli).**
 
@@ -26,7 +27,7 @@ Magic CLI is a command line utility which uses LLMs to help you use the command 
 ### Shell
 
 ```shell
-curl -LsSf https://github.com/guywaldman/magic-cli/releases/download/0.0.2/magic-cli-installer.sh | sh
+curl -LsSf https://github.com/guywaldman/magic-cli/releases/download/0.0.3/magic-cli-installer.sh | sh
 ```
 
 ### Homebrew
@@ -38,7 +39,7 @@ brew install guywaldman/tap/magic-cli
 ### PowerShell
 
 ```powershell
-powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0.2/magic-cli-installer.ps1 | iex"
+powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0.3/magic-cli-installer.ps1 | iex"
 ```
 
 ### Binaries
