@@ -24,9 +24,6 @@ pub struct MagicCliConfigOptions {
     pub openai_config: Option<OpenAiConfig>,
     pub llm: Option<LanguageModelProvider>,
     pub suggest: Option<SuggestConfig>,
-
-    #[serde(skip)]
-    pub config_path: PathBuf,
 }
 
 impl Display for MagicCliConfigOptions {
