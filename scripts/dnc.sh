@@ -8,6 +8,10 @@ ROOT_DIR=$(realpath $SCRIPT_DIR/..)
 files_to_check=$(git ls-files)
 
 for file in $files_to_check; do
+	if [[ $file == *"dnc.sh" ]]; then
+		continue
+	fi
+
 	file_path="$ROOT_DIR/$file"
 	bad_command=$(rg -C3 "DNC(\(.*\))*:?\s" $file_path)
 	if [ -n "$bad_command" ]; then
