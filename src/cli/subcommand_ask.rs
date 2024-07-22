@@ -23,20 +23,17 @@ impl AskSubcommand {
         match response {
             AskResponse::Suggest(suggest_response) => {
                 println!("{}", "Suggestion:".green().bold());
-                println!("{}", format!("  - Command: {}", suggest_response.command.blue().bold()));
-                println!("{}", format!("  - Explanation: {}", suggest_response.explanation.italic()));
+                println!("  - Command: {}", suggest_response.command.blue().bold());
+                println!("  - Explanation: {}", suggest_response.explanation.italic());
             }
             AskResponse::Ask(ask_response) => {
                 println!("{}", "Action required:".yellow().bold());
-                println!("{}", format!("  - Command: {}", ask_response.command.blue().bold()));
-                println!("{}", format!("  - Rationale: {}", ask_response.rationale.italic()));
+                println!("  - Command: {}", ask_response.command.blue().bold());
+                println!("  - Rationale: {}", ask_response.rationale.italic());
             }
             AskResponse::Success(success_response) => {
                 println!("{}", "Success:".green().bold());
-                println!(
-                    "{}",
-                    format!("  - Success: {}", success_response.success.to_string().green().bold())
-                );
+                println!("  - Success: {}", success_response.success.to_string().green().bold());
             }
         }
     }
@@ -83,7 +80,7 @@ impl MagicCliSubcommand for AskSubcommand {
 
                     println!(
                         "{}",
-                        format!("ACTION REQUIRED: Run {}", format!("`{}`", ask_response.command.blue().bold())).yellow()
+                        format!("ACTION REQUIRED: Run `{}`", ask_response.command.blue().bold()).yellow()
                     );
                     println!("{}", format!("RATIONALE: {}", ask_response.rationale).dimmed().italic());
 
