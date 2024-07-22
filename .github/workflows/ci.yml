@@ -57,12 +57,14 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           target: ${{ matrix.target }}
-      - run: cargo build --release
-        name: Build binary
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt install libxcb-xfixes0-dev
           python -m venv venv && source venv/bin/activate
           pip install -r requirements.txt
+      - run: cargo build --release
+        name: Build binary
       - name: Run integration tests
         run: |
           source venv/bin/activate
