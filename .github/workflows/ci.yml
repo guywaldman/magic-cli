@@ -54,6 +54,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ matrix.target }}
+      - run: cargo build --release --target ${{ matrix.target }}
+        name: Build binary
       - name: Install dependencies
         run: |
           python -m venv venv && source venv/bin/activate
