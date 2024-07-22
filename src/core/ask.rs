@@ -42,6 +42,7 @@ pub struct AskResponse {
     pub rationale: String,
 }
 
+#[allow(dead_code)]
 #[derive(Variant, serde::Deserialize)]
 #[variant(
     variant = "Success",

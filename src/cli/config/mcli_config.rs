@@ -1,6 +1,6 @@
 use crate::lm::{OllamaConfig, OpenAiConfig};
 
-use crate::cli::config::{self, MagicCliConfigError};
+use crate::cli::config::MagicCliConfigError;
 use crate::core::SuggestConfig;
 use colored::Colorize;
 use home::home_dir;
