@@ -5,6 +5,8 @@
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 ROOT_DIR=$(realpath $SCRIPT_DIR/..)
 
+source $ROOT_DIR/scripts/utils.sh
+
 files_to_check=$(git ls-files)
 
 found_dnc=false
@@ -19,14 +21,15 @@ for file in $files_to_check; do
 	if [ -n "$bad_command" ]; then
 		found_dnc=true
 
-		echo "Found DNC comment!"
-		echo
+		error "Found DNC comment!"
+		log-to-stderr
 
-		echo "FILE PATH:"
-		echo $file_path
+		log-to-stderr "FILE: $file_path"
+		log-to-stderr
 
-		echo "MATCH:"
-		echo "$bad_command"
+		log-to-stderr "MATCH:"
+		log-to-stderr
+		log-to-stderr "$bad_command"
 	fi
 done
 
