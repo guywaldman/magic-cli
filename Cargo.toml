@@ -7,7 +7,6 @@ repository = "https://github.com/guywaldman/magic-cli"
 edition = "2021"
 
 [dependencies]
-# DNC
 orch = { version = "0.0.15" }
 orch_response = { version = "0.0.15" }                 # Will be bundled inside `orch` (#10)
 chrono = "0.4.38"
