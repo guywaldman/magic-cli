@@ -47,14 +47,14 @@ impl ConfigSubcommand {
 
 #[async_trait]
 impl MagicCliSubcommand for ConfigSubcommand {
-    async fn run(&self, options: MagicCliRunOptions) -> Result<(), Box<dyn Error>> {
-        let config = &options.config;
+    async fn run(&self, mut options: MagicCliRunOptions) -> Result<(), Box<dyn Error>> {
+        let config_mgr = &mut options.config;
 
         match &self.command {
             ConfigSubcommands::Set { key, value } => {
                 let key = match key {
                     Some(key) => key.to_string(),
-                    None => MagicCliConfigManager::select_key()?,
+                    None => MagicCliConfigManager::prompt_user_to_select_key()?,
                 };
                 let value = match value {
                     Some(value) => value.to_string(),
@@ -62,7 +62,7 @@ impl MagicCliSubcommand for ConfigSubcommand {
                     None => Text::new(&format!("{} {}: ", "Enter the value for the key", key.magenta())).prompt()?,
                 };
 
-                match config.set(&key, &value) {
+                match config_mgr.set(&key, &value) {
                     Ok(_) => println!("{}", "Configuration updated.".green().bold()),
                     Err(err) => {
                         eprintln!("{}", format!("CLI configuration error: {}", err).red().bold());
@@ -73,9 +73,9 @@ impl MagicCliSubcommand for ConfigSubcommand {
             ConfigSubcommands::Get { key } => {
                 let key = match key {
                     Some(key) => key.to_string(),
-                    None => MagicCliConfigManager::select_key()?,
+                    None => MagicCliConfigManager::prompt_user_to_select_key()?,
                 };
-                match config.get(&key) {
+                match config_mgr.get(&key) {
                     Ok(value) => println!("{}", value),
                     Err(err) => {
                         eprintln!("{}", format!("CLI configuration error: {}", err).red().bold());
@@ -89,7 +89,7 @@ impl MagicCliSubcommand for ConfigSubcommand {
                 let mut sorted_config_keys = config_keys.values().collect::<Vec<_>>();
                 sorted_config_keys.sort_by(|a, b| a.prio.cmp(&b.prio).then(a.key.cmp(&b.key)));
                 for (i, item) in sorted_config_keys.iter().enumerate() {
-                    let config_value = config.get(&item.key)?;
+                    let config_value = config_mgr.get(&item.key)?;
                     let config_value = config_value.replace("null", "-");
                     let config_value = if item.is_secret {
                         "*".repeat(config_value.len())
@@ -110,7 +110,7 @@ impl MagicCliSubcommand for ConfigSubcommand {
             }
 
             ConfigSubcommands::Reset => {
-                MagicCliConfigManager::reset()?;
+                config_mgr.reset()?;
                 println!("{}", "Configuration reset to default values.".green().bold());
             }
             ConfigSubcommands::Path => {

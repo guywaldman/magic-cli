@@ -7,7 +7,7 @@ use super::{
     subcommand_suggest::{SuggestSubcommand, SuggestSubcommandArguments},
     subcommand_sysinfo::SysInfoSubcommand,
 };
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use colored::Colorize;
 use std::{error::Error, path::PathBuf, process::exit};
 
@@ -32,7 +32,9 @@ enum Commands {
         #[arg()]
         prompt: String,
 
-        #[arg(short, long, action=ArgAction::SetTrue)]
+        /// Whether to only output the command without logs, prompts, revisions or user action (e.g., copying to clipboard).
+        /// Default: false
+        #[arg(short, long, default_value_t = false)]
         output_only: bool,
     },
     /// Ask to perform an action in the terminal.
@@ -53,8 +55,19 @@ enum Commands {
         prompt: String,
 
         /// Whether to index previously executed commands (this may take a while).
-        #[arg(short, long, action=ArgAction::SetTrue)]
+        /// Default: true
+        #[arg(short, long, default_value_t = true)]
         index: bool,
+
+        /// Whether to reset the search index.
+        /// Default: false
+        #[arg(short, long, default_value_t = false)]
+        reset_index: bool,
+
+        /// Whether to only output the top result without prompts, user actions or logs..
+        /// Default: false
+        #[arg(short, long, default_value_t = false)]
+        output_only: bool,
     },
     /// Get system information.
     SysInfo,
@@ -71,8 +84,9 @@ impl MagicCli {
             config,
         } = clap_cli;
 
-        let config = MagicCliConfigManager::new(config);
-        config.initialize_config()?;
+        let config_path = config.unwrap_or(MagicCliConfigManager::get_default_config_file_path()?);
+        let mut config = MagicCliConfigManager::try_from_path(&config_path)?;
+        config.populate_defaults()?;
 
         match subcommand {
             Commands::Suggest { prompt, output_only, .. } => {
@@ -84,8 +98,20 @@ impl MagicCli {
             Commands::Config { command, .. } => {
                 Self::run_subcommmand(&config, ConfigSubcommand::new(command)).await;
             }
-            Commands::Search { prompt, index, .. } => {
-                Self::run_subcommmand(&config, SearchSubcommand::new(prompt, index)).await;
+            Commands::Search {
+                prompt,
+                index,
+                reset_index,
+                output_only,
+                ..
+            } => {
+                let subcmd = SearchSubcommand {
+                    prompt,
+                    index,
+                    reset_index,
+                    output_only,
+                };
+                Self::run_subcommmand(&config, subcmd).await;
             }
             Commands::SysInfo => {
                 Self::run_subcommmand(&config, SysInfoSubcommand::new()).await;
@@ -100,7 +126,7 @@ impl MagicCli {
         match subcommand.run(run_options).await {
             Ok(_) => {}
             Err(err) => {
-                eprintln!("{}", format!("Error: {}", err).red().bold());
+                eprintln!("{}", format!("ERROR: {}", err).red().bold());
                 exit(1);
             }
         }

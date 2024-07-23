@@ -1,5 +1,5 @@
 mod command;
-mod config;
+pub(crate) mod config;
 mod mcli;
 mod search;
 mod subcommand;

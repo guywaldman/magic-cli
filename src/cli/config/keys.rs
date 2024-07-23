@@ -1,14 +1,15 @@
 use orch::lm::LanguageModelProvider;
-use std::{cell::OnceCell, collections::HashMap};
+use std::{cell::OnceCell, collections::HashMap, path::PathBuf};
 
 use crate::{
+    cli::subcommand_search::SearchConfig,
     core::{SuggestConfig, SuggestMode},
     lm::{OllamaConfig, OpenAiConfig},
 };
 
-use super::{MagicCliConfigError, MagicCliConfigOptions};
+use super::{GeneralConfig, MagicCliConfig, MagicCliConfigError};
 
-type ConfigurationKeyUpdateFn = Box<dyn Fn(&mut MagicCliConfigOptions, &str) -> Result<(), MagicCliConfigError>>;
+type ConfigurationKeyUpdateFn = Box<dyn Fn(&mut MagicCliConfig, &str) -> Result<(), MagicCliConfigError>>;
 
 pub struct ConfigurationKey {
     pub key: String,
@@ -48,21 +49,38 @@ impl ConfigKeys {
         cell.get_or_init(|| {
             let mut keys = HashMap::new();
             keys.insert(
-                "llm".to_string(),
+                "general.llm".to_string(),
                 ConfigurationKey::new(
-                    "llm".to_string(),
+                    "general.llm".to_string(),
                     "The LLM to use for generating responses. Supported values: \"ollama\", \"openai\"".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
-                        config.llm = Some(LanguageModelProvider::try_from(value).expect("Invalid LLM provider"));
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
+                        if config.general.is_none() {
+                            config.general = Some(GeneralConfig::default());
+                        }
+                        config.general.as_mut().unwrap().llm = Some(LanguageModelProvider::try_from(value).expect("Invalid LLM provider"));
                         Ok(())
                     })
                 ).with_prio(0));
+            keys.insert(
+                "general.access_to_shell_history".to_string(),
+                ConfigurationKey::new(
+                    "general.access_to_shell_history".to_string(),
+                    "Whether to allow access to the shell history.".to_string(),
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
+                        if config.general.is_none() {
+                            config.general = Some(GeneralConfig::default());
+                        }
+                        config.general.as_mut().unwrap().access_to_shell_history = Some(value.parse::<bool>().map_err(|_| MagicCliConfigError::InvalidConfigValue(value.to_string()))?);
+                        Ok(())
+                    }),
+                )
+            );
             keys.insert(
                 "suggest.mode".to_string(),
                 ConfigurationKey::new(
                     "suggest.mode".to_string(),
                     "The mode to use for suggesting commands. Supported values: \"clipboard\" (copying command to clipboard), \"unsafe-execution\" (executing in the current shell session)".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
                         if config.suggest.is_none() {
                             config.suggest = Some(SuggestConfig::default());
                         }
@@ -76,7 +94,7 @@ impl ConfigKeys {
                 ConfigurationKey::new(
                     "suggest.add_to_history".to_string(),
                     "Whether to add the suggested command to the shell history.".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
                         if config.suggest.is_none() {
                             config.suggest = Some(SuggestConfig::default());
                         }
@@ -85,12 +103,45 @@ impl ConfigKeys {
                     }),
                 )
             );
+            keys.insert("search.allow_remote_llm".to_string(), ConfigurationKey::new(
+                "search.allow_remote_llm".to_string(),
+                "Whether to allow searching the command history using a remote LLM.".to_string(),
+                Box::new(|config: &mut MagicCliConfig, value: &str| {
+                    if config.search.is_none() {
+                        config.search = Some(SearchConfig::default());
+                    }
+                    config.search.as_mut().unwrap().allow_remote_llm = Some(value.parse::<bool>().map_err(|_| MagicCliConfigError::InvalidConfigValue(value.to_string()))?);
+                    Ok(())
+                }),
+            ));
+            keys.insert("search.shell_history".to_string(), ConfigurationKey::new(
+                "search.shell_history".to_string(),
+                "Optional path to the shell history file, otherwise uses the default according to the user's system.".to_string(),
+                Box::new(|config: &mut MagicCliConfig, value: &str| {
+                    if config.search.is_none() {
+                        config.search = Some(SearchConfig::default());
+                    }
+                    config.search.as_mut().unwrap().shell_history = Some(value.parse::<PathBuf>().map_err(|_| MagicCliConfigError::InvalidConfigValue(value.to_string()))?);
+                    Ok(())
+                }),
+            ));
+            keys.insert("search.index_dir".to_string(), ConfigurationKey::new(
+                "search.index_dir".to_string(),
+                "Optional path to the index directory, otherwise uses the default according to the user's system.".to_string(),
+                Box::new(|config: &mut MagicCliConfig, value: &str| {
+                    if config.search.is_none() {
+                        config.search = Some(SearchConfig::default());
+                    }
+                    config.search.as_mut().unwrap().index_dir = Some(value.parse::<PathBuf>().map_err(|_| MagicCliConfigError::InvalidConfigValue(value.to_string()))?);
+                    Ok(())
+                }),
+            ));
             keys.insert(
                 "ollama.base_url".to_string(),
                 ConfigurationKey::new(
                     "ollama.base_url".to_string(),
                     "The base URL of the Ollama API.".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
                         if config.ollama_config.is_none() {
                             config.ollama_config = Some(OllamaConfig::default());
                         }
@@ -104,7 +155,7 @@ impl ConfigKeys {
                 ConfigurationKey::new(
                     "ollama.model".to_string(),
                     "The model to use for generating responses.".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
                         if config.ollama_config.is_none() {
                             config.ollama_config = Some(OllamaConfig::default());
                         }
@@ -118,7 +169,7 @@ impl ConfigKeys {
                 ConfigurationKey::new(
                     "ollama.embedding_model".to_string(),
                     "The model to use for generating embeddings.".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
                         if config.ollama_config.is_none() {
                             config.ollama_config = Some(OllamaConfig::default());
                         }
@@ -132,7 +183,7 @@ impl ConfigKeys {
                 ConfigurationKey::new(
                     "openai.api_key".to_string(),
                     "The API key for the OpenAI API.".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
                         if config.openai_config.is_none() {
                             config.openai_config = Some(OpenAiConfig::default());
                         }
@@ -146,7 +197,7 @@ impl ConfigKeys {
                 ConfigurationKey::new(
                     "openai.model".to_string(),
                     "The model to use for generating responses.".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
                         if config.openai_config.is_none() {
                             config.openai_config = Some(OpenAiConfig::default());
                         }
@@ -160,7 +211,7 @@ impl ConfigKeys {
                 ConfigurationKey::new(
                     "openai.embedding_model".to_string(),
                     "The model to use for generating embeddings.".to_string(),
-                    Box::new(|config: &mut MagicCliConfigOptions, value: &str| {
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
                         if config.openai_config.is_none() {
                             config.openai_config = Some(OpenAiConfig::default());
                         }

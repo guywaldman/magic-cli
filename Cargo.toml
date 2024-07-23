@@ -7,8 +7,9 @@ repository = "https://github.com/guywaldman/magic-cli"
 edition = "2021"
 
 [dependencies]
-orch = { version = "0.0.14" }
-orch_response = { version = "0.0.14" }                 # Will be bundled inside `orch` (#10)
+# DNC
+orch = { version = "0.0.15" }
+orch_response = { version = "0.0.15" }                 # Will be bundled inside `orch` (#10)
 chrono = "0.4.38"
 clap = { version = "4.5.7", features = ["derive"] }
 clipboard = "0.5.0"
