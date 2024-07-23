@@ -1,3 +1,7 @@
+## Version 0.0.4
+
+- Fixed issue where the OpenAI API key was not used from the configuration ([#31](https://github.com/guywaldman/magic-cli/pull/31))
+
 ## Version 0.0.3
 
 - A default configuration file is now created if it doesn't exist
