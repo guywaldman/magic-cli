@@ -13,7 +13,7 @@ env:
 
 jobs:
   check-dnc:
-    name: check-dnc
+    name: DNC comments
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,13 +40,13 @@ jobs:
           target: ${{ matrix.target }}
       - run: cargo test --all-features
 
-  integration-test:
+  e2e-tests:
     strategy:
       fail-fast: true
       matrix:
         target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
         python-version: ["3.10"]
-    name: Integration tests
+    name: E2E tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,13 +65,15 @@ jobs:
           pip install -r requirements.txt
       - run: cargo build --release
         name: Build binary
-      - name: Run integration tests
+      - name: Run E2E tests
         run: |
           source venv/bin/activate
           python -m pytest -s
+        env:
+          OPENAI_API_KEY_E2E: ${{ secrets.OPENAI_API_KEY_E2E }}
 
-  formatting:
-    name: Formatting and linting
+  linting:
+    name: Linting and formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,10 +82,6 @@ jobs:
           components: rustfmt
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
-
-  linting:
-    runs-on: ubuntu-latest
-    steps:
       - uses: actions/checkout@v4
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features

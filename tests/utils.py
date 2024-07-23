@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import os
 import subprocess
+import dotenv
 
 
 def run_subcommand(subcommand: str, subcommand_args: list[str], mcli_args: list[str] = []):
@@ -11,12 +12,12 @@ def run_subcommand(subcommand: str, subcommand_args: list[str], mcli_args: list[
 
     command = f"{magic_cli_executable_path} {' '.join(mcli_args)} {subcommand} {' '.join(subcommand_args)}"
 
-    print(f"Running '{command}'...")
+    print(f"Running subcommand '{subcommand}'...")
     proc = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
     stdout, stderr, status = proc.stdout, proc.stderr, proc.returncode
 
-    print(f"Finished running '{command}' with status code {status}")
+    print(f"Finished running subcommand '{subcommand}' with status code {status}")
 
     return RunResults(
         stdout=stdout.decode("utf-8"),
@@ -36,3 +37,24 @@ class RunResults:
     stdout: str
     stderr: str
     status: int
+
+
+@dataclass
+class Env:
+    openai_api_key: str
+
+    @classmethod
+    def from_env(cls):
+        ci = os.environ.get("CI")
+        if ci is None or ci.lower() == "false":
+            # If running locally, load the .env.local file.
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            env_path = os.path.join(script_dir, "..", ".env.local")
+            print(f"Loading environment variables from '{env_path}'")
+            dotenv.load_dotenv(dotenv_path=env_path)
+
+        openai_api_key = os.environ.get("OPENAI_API_KEY_E2E")
+        if openai_api_key is None:
+            raise Exception("OPENAI_API_KEY_E2E environment variable not set")
+
+        return cls(openai_api_key=openai_api_key)

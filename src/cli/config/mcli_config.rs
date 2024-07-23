@@ -202,9 +202,13 @@ impl MagicCliConfig {
                 let Some(embedding_model) = openai_config.embedding_model.clone() else {
                     return Err(MagicCliConfigError::MissingConfigKey("embedding_model".to_owned()));
                 };
+                let Some(api_key) = openai_config.api_key.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("api_key".to_owned()));
+                };
                 let openai = OpenAiBuilder::new()
                     .with_model(model)
                     .with_embeddings_model(embedding_model)
+                    .with_api_key(api_key)
                     .try_build()
                     .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
                 Ok(Box::new(openai))
