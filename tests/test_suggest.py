@@ -1,3 +1,4 @@
+import json
 import tempfile
 
 import pytest
@@ -5,13 +6,16 @@ from tests.utils import Env, run_subcommand, set_config
 
 
 class TestSuggestSubcommand:
+    """Tests for the `suggest` subcommand, which allows users to suggest commands based on their prompt."""
+
     def test_basic_openai(self):
         env = Env.from_env()
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
             with open(tmp.name, "w") as f:
-                f.write('{"llm": "openai"}')
-            set_config("llm", "openai", config_path=tmp.name)
+                f.write(json.dumps({"general": {"llm": "openai"}}))
+
+            set_config("general.llm", "openai", config_path=tmp.name)
             set_config("openai.model", "gpt-4o-mini", config_path=tmp.name)
             set_config("openai.api_key", env.openai_api_key, config_path=tmp.name)
 
@@ -28,7 +32,7 @@ class TestSuggestSubcommand:
             with open(tmp.name, "w") as f:
                 f.write("{}")
 
-            set_config("llm", "ollama", config_path=tmp.name)
+            set_config("general.llm", "ollama", config_path=tmp.name)
             set_config("ollama.model", "llama3", config_path=tmp.name)
 
             with open(tmp.name, "r") as f:
@@ -45,7 +49,7 @@ class TestSuggestSubcommand:
             with open(tmp.name, "w") as f:
                 f.write("{}")
 
-            set_config("llm", "openai", config_path=tmp.name)
+            set_config("general.llm", "openai", config_path=tmp.name)
             results = run_subcommand(
                 "suggest", ["'Print the current directory using `ls`. Use only `ls`'"], mcli_args=["--config", tmp.name]
             )

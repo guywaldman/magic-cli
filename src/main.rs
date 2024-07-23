@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match cli.run(&args).await {
         Ok(_) => {}
         Err(err) => {
-            eprintln!("ERROR: {}", format!("Error: {}", err).red().bold());
+            eprintln!("{}", format!("ERROR: {}", err).red().bold());
             std::process::exit(1);
         }
     }

@@ -27,8 +27,8 @@ pub struct HayStackItem {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IndexItem {
-    item: HayStackItem,
-    embedding: Vec<f32>,
+    pub item: HayStackItem,
+    pub embedding: Vec<f32>,
 }
 
 pub struct SemanticSearchEngine {
@@ -36,7 +36,7 @@ pub struct SemanticSearchEngine {
 }
 
 impl SemanticSearchEngine {
-    const SIMILARITY_THRESHOLD: f64 = 0.2;
+    const SIMILARITY_THRESHOLD: f64 = 0.7;
 
     pub fn new(lm: Box<dyn LanguageModel>) -> Self {
         Self {
@@ -57,7 +57,7 @@ impl SemanticSearchEngine {
             .filter_map(|item| {
                 let similarity = f32::cosine(item.embedding.as_slice(), needle_embedding.as_slice());
 
-                if similarity.map(|score| score < Self::SIMILARITY_THRESHOLD).unwrap_or(false) {
+                if similarity.map(|score| score > Self::SIMILARITY_THRESHOLD).unwrap_or(false) {
                     return None;
                 }
 

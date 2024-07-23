@@ -8,7 +8,10 @@ use orch::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::core::Shell;
+use crate::{
+    cli::config::{ConfigOptions, MagicCliConfigError},
+    core::Shell,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SuggestMode {
@@ -76,7 +79,10 @@ pub struct SuggestResponseError {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuggestConfig {
+    /// The mode to use for suggesting commands. Supported values: "clipboard" (copying command to clipboard), "unsafe-execution" (executing in the current shell session).
     pub mode: Option<SuggestMode>,
+
+    /// Whether to add the suggested command to the shell history.
     pub add_to_history: Option<bool>,
 }
 
@@ -86,6 +92,22 @@ impl Default for SuggestConfig {
             mode: Some(SuggestMode::Execution),
             add_to_history: Some(false),
         }
+    }
+}
+
+impl ConfigOptions for SuggestConfig {
+    fn populate_defaults(&mut self) -> Result<bool, MagicCliConfigError> {
+        let mut populated = false;
+        let defaults = SuggestConfig::default();
+        if self.mode.is_none() {
+            populated = true;
+            self.mode = defaults.mode;
+        }
+        if self.add_to_history.is_none() {
+            populated = true;
+            self.add_to_history = defaults.add_to_history;
+        }
+        Ok(populated)
     }
 }
 

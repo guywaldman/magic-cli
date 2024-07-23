@@ -3,7 +3,7 @@ use home::home_dir;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
 };
 use thiserror::Error;
@@ -34,8 +34,8 @@ pub enum ShellError {
     FailedToExtractSystemInfo(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum ShellType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ShellType {
     Zsh,
     Bash,
     Pwsh,
@@ -162,12 +162,11 @@ impl Shell {
         Ok(())
     }
 
-    pub(crate) fn get_shell_history() -> Result<Vec<String>, ShellError> {
+    pub(crate) fn get_shell_history(shell_history_path: &Path) -> Result<Vec<String>, ShellError> {
         let shell_type = Self::current_shell_type()?;
         let resp = match shell_type {
             ShellType::Zsh | ShellType::Bash | ShellType::Pwsh => {
-                let history_file_path = shell_type.history_file_path();
-                let history_file = File::open(history_file_path).map_err(ShellError::FailedToReadShellHistory)?;
+                let history_file = File::open(shell_history_path).map_err(ShellError::FailedToReadShellHistory)?;
                 let mut reader = BufReader::new(history_file);
 
                 // The shell history may contain non-valid UTF-8 characters.
@@ -177,7 +176,7 @@ impl Shell {
                     if buf.is_empty() {
                         break;
                     }
-                    let line = String::from_utf8_lossy(&buf);
+                    let line = String::from_utf8_lossy(&buf[..buf.len() - 1]);
                     lines.push(line.to_string());
                     buf.clear();
                 }
@@ -186,6 +185,11 @@ impl Shell {
             }
         };
         Ok(resp)
+    }
+
+    pub fn shell_history_path(shell_type: Option<ShellType>) -> Result<PathBuf, ShellError> {
+        let shell_type = shell_type.unwrap_or(Self::current_shell_type()?);
+        Ok(shell_type.history_file_path())
     }
 
     fn current_shell_type() -> Result<ShellType, ShellError> {

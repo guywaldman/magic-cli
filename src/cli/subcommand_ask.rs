@@ -47,9 +47,9 @@ impl AskSubcommand {
 #[async_trait]
 impl MagicCliSubcommand for AskSubcommand {
     async fn run(&self, options: MagicCliRunOptions) -> Result<(), Box<dyn Error>> {
-        let config = &options.config;
-        let config_values = config.load_config()?;
-        let lm = config.lm_from_config()?;
+        let config_mgr = &options.config;
+        let lm = config_mgr.lm_from_config()?;
+        let config = config_mgr.config.clone();
         println!("{}", "Model details:".dimmed());
         println!("{}", format!("  - Language model provider: {}", &lm.provider()).dimmed());
         println!(
@@ -72,7 +72,7 @@ impl MagicCliSubcommand for AskSubcommand {
                     break;
                 }
                 AskResponseOption::Suggestion(ref suggest_response) => {
-                    let Some(config_values) = config_values.suggest.clone() else {
+                    let Some(config_values) = config.suggest.clone() else {
                         return Err(Box::new(MagicCliConfigError::MissingConfigKey("suggest".to_string())));
                     };
                     let command_run_result = CliCommand::new(config_values).suggest_user_action_on_command(&suggest_response.command)?;
@@ -87,7 +87,7 @@ impl MagicCliSubcommand for AskSubcommand {
                         .await?;
                 }
                 AskResponseOption::Ask(ask_response) => {
-                    let Some(config_values) = config_values.suggest.clone() else {
+                    let Some(config_values) = config.suggest.clone() else {
                         return Err(Box::new(MagicCliConfigError::MissingConfigKey("suggest".to_string())));
                     };
                     let command_run_result = CliCommand::new(config_values).suggest_user_action_on_command(&ask_response.command)?;

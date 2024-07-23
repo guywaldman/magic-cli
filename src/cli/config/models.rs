@@ -29,3 +29,9 @@ pub enum MagicCliConfigError {
     #[error("Error converting from or to 'SuggestMode': {0}")]
     SuggestModeError(#[from] SuggestModeError),
 }
+
+pub(crate) trait ConfigOptions {
+    /// Populates the default values for the configuration options.
+    /// Returns `true` if the configuration was populated, `false` if it was already populated.
+    fn populate_defaults(&mut self) -> Result<bool, MagicCliConfigError>;
+}
