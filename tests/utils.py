@@ -4,7 +4,7 @@ import subprocess
 import dotenv
 
 
-def run_subcommand(subcommand: str, subcommand_args: list[str], mcli_args: list[str] = []):
+def run_subcommand(subcommand: str, subcommand_args: list[str] = [], log_args: bool = False, mcli_args: list[str] = []):
     """Helper utility which runs the subcommand with the given arguments and returns the results."""
 
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,12 +12,14 @@ def run_subcommand(subcommand: str, subcommand_args: list[str], mcli_args: list[
 
     command = f"{magic_cli_executable_path} {' '.join(mcli_args)} {subcommand} {' '.join(subcommand_args)}"
 
-    print(f"Running subcommand '{subcommand}'...")
+    command_log = command if log_args else f"{magic_cli_executable_path} (...arguments omitted...)"
+
+    print(f"Running command '{command_log}'...")
     proc = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
     stdout, stderr, status = proc.stdout, proc.stderr, proc.returncode
 
-    print(f"Finished running subcommand '{subcommand}' with status code {status}")
+    print(f"Finished running command '{command_log}' with status code {status}")
 
     return RunResults(
         stdout=stdout.decode("utf-8"),
@@ -26,9 +28,15 @@ def run_subcommand(subcommand: str, subcommand_args: list[str], mcli_args: list[
     )
 
 
-def set_config(key: str, value: str, config_path: str | None = None):
+def run_shell_command(command: str, log_args: bool = False, args: list[str] = []):
+    """Helper utility which runs a shell command and returns the results."""
+
+    print(f"Running shell command '{command}'...")
+
+
+def set_config(key: str, value: str, log_args: bool = False, config_path: str | None = None):
     mcli_args = [] if config_path is None else ["--config", config_path]
-    results = run_subcommand("config", ["set", "--key", key, "--value", value], mcli_args=mcli_args)
+    results = run_subcommand("config", ["set", "--key", key, "--value", value], log_args=log_args, mcli_args=mcli_args)
     assert results.status == 0
 
 
