@@ -1,20 +1,12 @@
 # Security Policy
 
-## Supported Versions
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.0.3   | :white_check_mark: |
-| 0.0.2   | :white_check_mark: |
-| 0.0.1   | :white_check_mark: |
-
 ## Data sensitivity
 
 The sensitive data that is currently handled by Magic CLI is:
 
-- OpenAI API key, which is stored in the configuration within the **user home directory** (`!/.config/magic_cli`).
+- OpenAI API key, which is stored in the configuration within the **user home directory** (`~/.config/magic_cli`).
   > There are plans to store this token in the system's secure key storage, but this is not yet implemented.
-- Embeddings of the shell history for the `magic-cli search` command, which are stored in the configuration within the **user home directory** (`!/.config/magic_cli`)
+- Embeddings of the shell history for the `magic-cli search` command, which are stored in the configuration within the **user home directory** (`~/.config/magic_cli`) and are generated using the LLM provider of choice.
 
 ## Reporting a Vulnerability
 
