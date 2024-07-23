@@ -61,14 +61,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt install libxcb-xfixes0-dev
-          python -m venv venv && source venv/bin/activate
-          pip install -r requirements.txt
       - run: cargo build --release
         name: Build binary
       - name: Run E2E tests
-        run: |
-          source venv/bin/activate
-          python -m pytest -s
+        run: ./scripts/e2e-tests.sh
         env:
           OPENAI_API_KEY_E2E: ${{ secrets.OPENAI_API_KEY_E2E }}
 
