@@ -65,10 +65,12 @@ jobs:
           pip install -r requirements.txt
       - run: cargo build --release
         name: Build binary
-      - name: Run integration tests
+      - name: Run E2E tests
         run: |
           source venv/bin/activate
           python -m pytest -s
+        env:
+          OPENAI_API_KEY_E2E: ${{ secrets.OPENAI_API_KEY_E2E }}
 
   formatting:
     name: Formatting and linting
