@@ -1,5 +1,5 @@
 use super::{
-    config::MagicCliConfig,
+    config::MagicCliConfigManager,
     subcommand::{MagicCliRunOptions, MagicCliSubcommand},
     subcommand_ask::AskSubcommand,
     subcommand_config::{ConfigSubcommand, ConfigSubcommands},
@@ -71,7 +71,7 @@ impl MagicCli {
             config,
         } = clap_cli;
 
-        let config = MagicCliConfig::new(config);
+        let config = MagicCliConfigManager::new(config);
         config.initialize_config()?;
 
         match subcommand {
@@ -95,7 +95,7 @@ impl MagicCli {
         Ok(())
     }
 
-    async fn run_subcommmand(config: &MagicCliConfig, subcommand: impl MagicCliSubcommand) {
+    async fn run_subcommmand(config: &MagicCliConfigManager, subcommand: impl MagicCliSubcommand) {
         let run_options = MagicCliRunOptions { config: config.clone() };
         match subcommand.run(run_options).await {
             Ok(_) => {}

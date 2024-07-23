@@ -9,7 +9,7 @@ use crate::core::{
     HayStackItem, IndexEngine, IndexError, IndexMetadata, SemanticSearchEngine, SemanticSearchEngineError, Shell, ShellError,
 };
 
-use super::config::{MagicCliConfig, MagicCliConfigError};
+use super::config::{MagicCliConfigManager, MagicCliConfigError};
 
 #[derive(Debug, Error)]
 pub(crate) enum CliSearchError {
@@ -39,7 +39,7 @@ impl CliSearch {
     }
 
     pub async fn search_command(&self, prompt: &str, index: bool) -> Result<String, CliSearchError> {
-        let index_dir_path = MagicCliConfig::get_config_default_dir_path()?.join("index");
+        let index_dir_path = MagicCliConfigManager::get_config_default_dir_path()?.join("index");
         if !index_dir_path.exists() {
             std::fs::create_dir_all(&index_dir_path).unwrap();
         }

@@ -2,11 +2,11 @@ use std::error::Error;
 
 use async_trait::async_trait;
 
-use super::config::MagicCliConfig;
+use super::config::MagicCliConfigManager;
 
 #[derive(Debug, Clone)]
 pub struct MagicCliRunOptions {
-    pub config: MagicCliConfig,
+    pub config: MagicCliConfigManager,
 }
 
 #[async_trait]

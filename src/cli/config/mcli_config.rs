@@ -17,13 +17,22 @@ use super::ConfigKeys;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MagicCliConfigOptions {
+    /// The LLM provider to use for generating responses.
+    pub llm: Option<LanguageModelProvider>,
+
+    /// Configuration for command suggestions (e.g., the `suggest` subcommand).
+    pub suggest: Option<SuggestConfig>,
+
+    /// Configuration for embeddings generation (e.g., in the `search` subcommand).
+    pub embeddings: Option<EmbeddingsConfig>,
+
+    /// Options for the Ollama LLM provider.
     #[serde(rename = "ollama")]
     pub ollama_config: Option<OllamaConfig>,
 
+    /// Options for the OpenAI LLM provider.
     #[serde(rename = "openai")]
     pub openai_config: Option<OpenAiConfig>,
-    pub llm: Option<LanguageModelProvider>,
-    pub suggest: Option<SuggestConfig>,
 }
 
 impl Default for MagicCliConfigOptions {
@@ -44,13 +53,13 @@ impl Display for MagicCliConfigOptions {
 }
 
 #[derive(Debug, Clone)]
-pub struct MagicCliConfig {
+pub struct MagicCliConfigManager {
     /// The path to the configuration file.
     /// The default is used (`~/.config/magic_cli/config.json`) if this is `None`.
     pub config_path: Option<PathBuf>,
 }
 
-impl MagicCliConfig {
+impl MagicCliConfigManager {
     pub fn new(config_path: Option<PathBuf>) -> Self {
         Self { config_path }
     }

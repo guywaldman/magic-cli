@@ -6,7 +6,7 @@ use colored::Colorize;
 use inquire::Text;
 
 use super::{
-    config::{ConfigKeys, MagicCliConfig},
+    config::{ConfigKeys, MagicCliConfigManager},
     subcommand::{MagicCliRunOptions, MagicCliSubcommand},
 };
 
@@ -54,7 +54,7 @@ impl MagicCliSubcommand for ConfigSubcommand {
             ConfigSubcommands::Set { key, value } => {
                 let key = match key {
                     Some(key) => key.to_string(),
-                    None => MagicCliConfig::select_key()?,
+                    None => MagicCliConfigManager::select_key()?,
                 };
                 let value = match value {
                     Some(value) => value.to_string(),
@@ -73,7 +73,7 @@ impl MagicCliSubcommand for ConfigSubcommand {
             ConfigSubcommands::Get { key } => {
                 let key = match key {
                     Some(key) => key.to_string(),
-                    None => MagicCliConfig::select_key()?,
+                    None => MagicCliConfigManager::select_key()?,
                 };
                 match config.get(&key) {
                     Ok(value) => println!("{}", value),
@@ -110,11 +110,11 @@ impl MagicCliSubcommand for ConfigSubcommand {
             }
 
             ConfigSubcommands::Reset => {
-                MagicCliConfig::reset()?;
+                MagicCliConfigManager::reset()?;
                 println!("{}", "Configuration reset to default values.".green().bold());
             }
             ConfigSubcommands::Path => {
-                let default_config_path = MagicCliConfig::get_default_config_file_path()?;
+                let default_config_path = MagicCliConfigManager::get_default_config_file_path()?;
                 println!("{}", default_config_path.display());
             }
         }

@@ -76,7 +76,10 @@ pub struct SuggestResponseError {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuggestConfig {
+    /// The mode to use for suggesting commands. Supported values: "clipboard" (copying command to clipboard), "unsafe-execution" (executing in the current shell session).
     pub mode: Option<SuggestMode>,
+
+    /// Whether to add the suggested command to the shell history.
     pub add_to_history: Option<bool>,
 }
 
