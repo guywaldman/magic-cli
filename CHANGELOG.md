@@ -1,3 +1,13 @@
+# Version 0.0.5
+
+- Adds a new `general.access_to_shell_history` configuration flag for explicitly allowing access to shell history ([#33](https://github.com/guywaldman/magic-cli/pull/33))
+- Adds a new `search.allow_remote_llm` configuration flag for explicitly allowing access to shell history to non-local LLM providers ([#33](https://github.com/guywaldman/magic-cli/pull/33))
+- Adds a new `search.shell_history` configuration for specifying a custom path to a shell history file (added for testing, but may be optionally useful for users none the less) ([#33](https://github.com/guywaldman/magic-cli/pull/33))
+- Adds a new `search.index_dir` configuration for specifying a custom path to a directory which will contain the indexing data and metadata (added for testing, but may be optionally useful for users none the less) ([#33](https://github.com/guywaldman/magic-cli/pull/33))
+- Adds and improves on E2E test coverage ([#33](https://github.com/guywaldman/magic-cli/pull/33))
+- Fixes an issue where embeddings wouldn't work for OpenAI since embedding dimensions were provided and were throwing an error (see https://github.com/guywaldman/orch/pull/13) ([#33](https://github.com/guywaldman/magic-cli/pull/33))
+- Various fixes & enhancements ([#33](https://github.com/guywaldman/magic-cli/pull/33))
+
 ## Version 0.0.4
 
 - Fixed issue where the OpenAI API key was not used from the configuration ([#31](https://github.com/guywaldman/magic-cli/pull/31))

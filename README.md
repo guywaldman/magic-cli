@@ -27,7 +27,7 @@ Magic CLI is a command line utility which uses LLMs to help you use the command 
 ### Shell
 
 ```shell
-curl -LsSf https://github.com/guywaldman/magic-cli/releases/download/0.0.4/magic-cli-installer.sh | sh
+curl -LsSf https://github.com/guywaldman/magic-cli/releases/download/0.0.5/magic-cli-installer.sh | sh
 ```
 
 ### Homebrew
@@ -39,7 +39,7 @@ brew install guywaldman/tap/magic-cli
 ### PowerShell
 
 ```powershell
-powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0.4/magic-cli-installer.ps1 | iex"
+powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0.5/magic-cli-installer.ps1 | iex"
 ```
 
 ### Binaries
