@@ -1,13 +1,13 @@
 use crate::cli::subcommand_search::SearchConfig;
 use crate::core::SuggestConfig;
-use crate::lm::{OllamaConfig, OpenAiConfig};
+use crate::lm::{AnthropicConfig, OllamaConfig, OpenAiConfig};
 
 use crate::cli::config::{ConfigOptions, MagicCliConfigError};
 use colored::Colorize;
 use home::home_dir;
 use inquire::list_option::ListOption;
 use inquire::Select;
-use orch::lm::{LanguageModel, LanguageModelBuilder, LanguageModelProvider, OllamaBuilder, OpenAiBuilder};
+use orch::lm::{AnthropicBuilder, LanguageModel, LanguageModelBuilder, LanguageModelProvider, OllamaBuilder, OpenAiBuilder};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
@@ -34,6 +34,10 @@ pub struct MagicCliConfig {
     /// Options for the OpenAI LLM provider.
     #[serde(rename = "openai")]
     pub openai_config: Option<OpenAiConfig>,
+
+    /// Options for the Anthropic LLM provider.
+    #[serde(rename = "anthropic")]
+    pub anthropic_config: Option<AnthropicConfig>,
 }
 
 impl ConfigOptions for MagicCliConfig {
@@ -96,6 +100,7 @@ impl Default for MagicCliConfig {
             general: Some(GeneralConfig::default()),
             ollama_config: Some(OllamaConfig::default()),
             openai_config: Some(OpenAiConfig::default()),
+            anthropic_config: Some(AnthropicConfig::default()),
             suggest: Some(SuggestConfig::default()),
             search: Some(SearchConfig::default()),
         }
@@ -249,7 +254,22 @@ impl MagicCliConfigManager {
                     .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
                 Ok(Box::new(openai))
             }
-            _ => Err(MagicCliConfigError::Configuration("Invalid LLM provider".to_string())),
+            LanguageModelProvider::Anthropic => {
+                let Some(anthropic_config) = config.anthropic_config else {
+                    return Err(MagicCliConfigError::MissingConfigKey("anthropic".to_owned()));
+                };
+                let Some(api_key) = anthropic_config.api_key.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("api_key".to_owned()));
+                };
+                let Some(model) = anthropic_config.model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("model".to_owned()));
+                };
+                let anthropic_builder = AnthropicBuilder::new().with_model(model).with_api_key(api_key);
+                let anthropic = anthropic_builder
+                    .try_build()
+                    .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
+                Ok(Box::new(anthropic))
+            }
         }
     }
 

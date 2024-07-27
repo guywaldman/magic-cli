@@ -4,7 +4,7 @@ use std::{cell::OnceCell, collections::HashMap, path::PathBuf};
 use crate::{
     cli::subcommand_search::SearchConfig,
     core::{SuggestConfig, SuggestMode},
-    lm::{OllamaConfig, OpenAiConfig},
+    lm::{AnthropicConfig, OllamaConfig, OpenAiConfig},
 };
 
 use super::{GeneralConfig, MagicCliConfig, MagicCliConfigError};
@@ -230,6 +230,34 @@ impl ConfigKeys {
                             config.openai_config = Some(OpenAiConfig::default());
                         }
                         config.openai_config.as_mut().unwrap().embedding_model = Some(value.to_string());
+                        Ok(())
+                    }),
+                )
+            );
+            keys.insert(
+                "anthropic.api_key".to_string(),
+                ConfigurationKey::new(
+                    "anthropic.api_key".to_string(),
+                    "The API key for the Anthropic API.".to_string(),
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
+                        if config.anthropic_config.is_none() {
+                            config.anthropic_config = Some(AnthropicConfig::default());
+                        }
+                        config.anthropic_config.as_mut().unwrap().api_key = Some(value.to_string());
+                        Ok(())
+                    }),
+                ).secret()
+            );
+            keys.insert(
+                "anthropic.model".to_string(),
+                ConfigurationKey::new(
+                    "anthropic.model".to_string(),
+                    "The model to use for generating responses.".to_string(),
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
+                        if config.anthropic_config.is_none() {
+                            config.anthropic_config = Some(AnthropicConfig::default());
+                        }
+                        config.anthropic_config.as_mut().unwrap().model = Some(value.to_string());
                         Ok(())
                     }),
                 )

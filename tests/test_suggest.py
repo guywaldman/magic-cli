@@ -6,9 +6,11 @@ from tests.utils import Env, run_subcommand, set_config
 
 
 class TestSuggestSubcommand:
-    """Tests for the `suggest` subcommand, which allows users to suggest commands based on their prompt."""
+    """Tests for the `suggest` subcommand."""
 
     def test_basic_openai(self):
+        """Test for the `suggest` subcommand with OpenAI as the LLM provider."""
+
         env = Env.from_env()
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
@@ -21,6 +23,25 @@ class TestSuggestSubcommand:
 
             results = run_subcommand(
                 "suggest", ["'Print the current directory using ls. Use only ls'", "--output-only"], mcli_args=["--config", tmp.name]
+            )
+            assert results.status == 0
+            assert "ls" in results.stdout
+
+    def test_basic_anthropic(self):
+        """Test for the `suggest` subcommand with Anthropic as the LLM provider."""
+
+        env = Env.from_env()
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
+            with open(tmp.name, "w") as f:
+                f.write("{}")
+
+            set_config("general.llm", "anthropic", config_path=tmp.name)
+            set_config("anthropic.api_key", env.anthropic_api_key, config_path=tmp.name)
+            set_config("anthropic.model", "claude-3-5-sonnet-20240620", config_path=tmp.name)
+
+            results = run_subcommand(
+                "suggest", ["'Print the current directory using `ls`. Use only `ls`'", "--output-only"], mcli_args=["--config", tmp.name]
             )
             assert results.status == 0
             assert "ls" in results.stdout

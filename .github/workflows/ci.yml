@@ -67,6 +67,7 @@ jobs:
         run: ./scripts/e2e-tests.sh
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY_E2E }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_E2E }}
 
   linting:
     name: Linting and formatting
