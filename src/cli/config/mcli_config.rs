@@ -1,6 +1,6 @@
 use crate::cli::subcommand_search::SearchConfig;
 use crate::core::SuggestConfig;
-use crate::lm::{OllamaConfig, OpenAiConfig};
+use crate::lm::{AnthropicConfig, OllamaConfig, OpenAiConfig};
 
 use crate::cli::config::{ConfigOptions, MagicCliConfigError};
 use colored::Colorize;
@@ -34,6 +34,10 @@ pub struct MagicCliConfig {
     /// Options for the OpenAI LLM provider.
     #[serde(rename = "openai")]
     pub openai_config: Option<OpenAiConfig>,
+
+    /// Options for the Anthropic LLM provider.
+    #[serde(rename = "anthropic")]
+    pub anthropic_config: Option<AnthropicConfig>,
 }
 
 impl ConfigOptions for MagicCliConfig {
@@ -96,6 +100,7 @@ impl Default for MagicCliConfig {
             general: Some(GeneralConfig::default()),
             ollama_config: Some(OllamaConfig::default()),
             openai_config: Some(OpenAiConfig::default()),
+            anthropic_config: Some(AnthropicConfig::default()),
             suggest: Some(SuggestConfig::default()),
             search: Some(SearchConfig::default()),
         }
@@ -249,7 +254,11 @@ impl MagicCliConfigManager {
                     .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
                 Ok(Box::new(openai))
             }
-            _ => Err(MagicCliConfigError::Configuration("Invalid LLM provider".to_string())),
+            LanguageModelProvider::Anthropic => {
+                let Some(anthropic_config) = config.anthropic_config else {
+                    return Err(MagicCliConfigError::MissingConfigKey("anthropic".to_owned()));
+                };
+            }
         }
     }
 
