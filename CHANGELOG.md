@@ -1,3 +1,8 @@
+# Version 0.0.6
+
+- Adds ability to specify a custom API endpoint for OpenAI ([#34](https://github.com/guywaldman/magic-cli/pull/34))
+- Adds support for Anthropic ([#35](https://github.com/guywaldman/magic-cli/pull/35))
+
 # Version 0.0.5
 
 - Adds a new `general.access_to_shell_history` configuration flag for explicitly allowing access to shell history ([#33](https://github.com/guywaldman/magic-cli/pull/33))

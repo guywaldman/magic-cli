@@ -18,6 +18,17 @@ Magic CLI is a command line utility which uses LLMs to help you use the command 
 
 ---
 
+## Features
+
+- Suggest a command (see [section](#feature-suggest-a-command))
+- Ask to generate a command to perform a task (see [section](#feature-ask-to-generate-a-command))
+- Semantic search of commands across your shell history
+- Use a local or remote LLM (see [section](#use-different-llms))
+  - Supported LLM providers:
+    - [ollama](https://github.com/ollama/ollama)
+    - [OpenAI](https://openai.com/)
+    - [Anthropic](https://www.anthropic.com/)
+
 ## Installation
 
 > [!NOTE]
@@ -27,7 +38,7 @@ Magic CLI is a command line utility which uses LLMs to help you use the command 
 ### Shell
 
 ```shell
-curl -LsSf https://github.com/guywaldman/magic-cli/releases/download/0.0.5/magic-cli-installer.sh | sh
+curl -LsSf https://github.com/guywaldman/magic-cli/releases/download/0.0.6/magic-cli-installer.sh | sh
 ```
 
 ### Homebrew
@@ -39,7 +50,7 @@ brew install guywaldman/tap/magic-cli
 ### PowerShell
 
 ```powershell
-powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0.5/magic-cli-installer.ps1 | iex"
+powershell -c "irm https://github.com/guywaldman/magic-cli/releases/download/0.0.6/magic-cli-installer.ps1 | iex"
 ```
 
 ### Binaries
@@ -68,13 +79,6 @@ function mca {
   magic-cli ask "$model_prompt"
 }
 ```
-
-## Features
-
-- Suggest a command (see [section](#feature-suggest-a-command))
-- Ask to generate a command to perform a task (see [section](#feature-ask-to-generate-a-command))
-- Semantic search of commands across your shell history
-- Use a local or remote LLM (see [section](#use-different-llms))
 
 ### Suggest a command
 
