@@ -237,14 +237,19 @@ impl MagicCliConfigManager {
                 let Some(api_key) = openai_config.api_key.clone() else {
                     return Err(MagicCliConfigError::MissingConfigKey("api_key".to_owned()));
                 };
-                let openai = OpenAiBuilder::new()
+                let mut openai_builder = OpenAiBuilder::new()
                     .with_model(model)
                     .with_embeddings_model(embedding_model)
-                    .with_api_key(api_key)
+                    .with_api_key(api_key);
+                if let Some(api_endpoint) = openai_config.api_endpoint.clone() {
+                    openai_builder = openai_builder.with_api_endpoint(api_endpoint);
+                }
+                let openai = openai_builder
                     .try_build()
                     .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
                 Ok(Box::new(openai))
             }
+            _ => Err(MagicCliConfigError::Configuration("Invalid LLM provider".to_string())),
         }
     }
 
