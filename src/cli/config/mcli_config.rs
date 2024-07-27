@@ -7,7 +7,7 @@ use colored::Colorize;
 use home::home_dir;
 use inquire::list_option::ListOption;
 use inquire::Select;
-use orch::lm::{LanguageModel, LanguageModelBuilder, LanguageModelProvider, OllamaBuilder, OpenAiBuilder};
+use orch::lm::{AnthropicBuilder, LanguageModel, LanguageModelBuilder, LanguageModelProvider, OllamaBuilder, OpenAiBuilder};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
@@ -258,6 +258,17 @@ impl MagicCliConfigManager {
                 let Some(anthropic_config) = config.anthropic_config else {
                     return Err(MagicCliConfigError::MissingConfigKey("anthropic".to_owned()));
                 };
+                let Some(api_key) = anthropic_config.api_key.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("api_key".to_owned()));
+                };
+                let Some(model) = anthropic_config.model.clone() else {
+                    return Err(MagicCliConfigError::MissingConfigKey("model".to_owned()));
+                };
+                let anthropic_builder = AnthropicBuilder::new().with_model(model).with_api_key(api_key);
+                let anthropic = anthropic_builder
+                    .try_build()
+                    .map_err(|e| MagicCliConfigError::Configuration(e.to_string()))?;
+                Ok(Box::new(anthropic))
             }
         }
     }

@@ -50,6 +50,7 @@ class RunResults:
 @dataclass
 class Env:
     openai_api_key: str
+    anthropic_api_key: str
 
     @classmethod
     def from_env(cls):
@@ -64,5 +65,8 @@ class Env:
         openai_api_key = os.environ.get("OPENAI_API_KEY")
         if openai_api_key is None:
             raise Exception("OPENAI_API_KEY environment variable not set")
+        anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if anthropic_api_key is None:
+            raise Exception("ANTHROPIC_API_KEY environment variable not set")
 
-        return cls(openai_api_key=openai_api_key)
+        return cls(openai_api_key=openai_api_key, anthropic_api_key=anthropic_api_key)
