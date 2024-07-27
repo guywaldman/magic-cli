@@ -78,7 +78,7 @@ impl MagicCliSubcommand for SearchSubcommand {
             };
             if !allow_remote_llm {
                 return Err(Box::new(MagicCliConfigError::Configuration(
-                    "Using remote LLM but `allow_remote_llm` is set to false. Set it to `true` if you are willing for remote LLM providers such as OpenAI to embed your shell history which may contains sensitive information.".to_string(),
+                    "Using remote LLM but `search.allow_remote_llm` is set to false. Set it to `true` if you are willing for remote LLM providers such as OpenAI to embed your shell history which may contains sensitive information.".to_string(),
                 )));
             }
         }
