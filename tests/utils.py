@@ -61,8 +61,8 @@ class Env:
             print(f"Loading environment variables from '{env_path}'")
             dotenv.load_dotenv(dotenv_path=env_path)
 
-        openai_api_key = os.environ.get("OPENAI_API_KEY_E2E")
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
         if openai_api_key is None:
-            raise Exception("OPENAI_API_KEY_E2E environment variable not set")
+            raise Exception("OPENAI_API_KEY environment variable not set")
 
         return cls(openai_api_key=openai_api_key)
