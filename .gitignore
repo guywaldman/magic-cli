@@ -12,3 +12,6 @@ __pycache__
 
 .env*.local
 temp
+
+# macOS
+.DS_Store

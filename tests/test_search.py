@@ -8,13 +8,21 @@ class TestSearchSubcommand:
     """Tests for the `search` subcommand, which allows users to semantically search for commands across their shell history."""
 
     def test_basic_search_openai(self):
+        """Tests basic search with OpenAI."""
         env = Env.from_env()
 
         with tempfile.TemporaryDirectory() as index_dir, tempfile.NamedTemporaryFile(
             mode="w", delete=False
         ) as config, tempfile.NamedTemporaryFile(mode="w", delete=False) as shell_history:
             with open(config.name, "w") as f:
-                f.write(json.dumps({"general": {"llm": "openai"}, "search": {"shell_history": shell_history.name, "index_dir": index_dir}}))
+                f.write(
+                    json.dumps(
+                        {
+                            "general": {"llm": "openai"},
+                            "search": {"shell_history": shell_history.name, "index_dir": index_dir, "allow_remote_llm": True},
+                        }
+                    )
+                )
 
             with open(shell_history.name, "w") as f:
                 f.write("echo foobar\n")
@@ -28,14 +36,22 @@ class TestSearchSubcommand:
             assert results.status == 0
             assert "echo foobar" in results.stdout
 
-    def test_search_with_remote_llm(self):
+    def test_search_with_remote_llm_misconfigured(self):
+        """Tests that the search subcommand fails if the user tries to use a remote LLM but the configuration is not set correctly."""
         env = Env.from_env()
 
         with tempfile.TemporaryDirectory() as index_dir, tempfile.NamedTemporaryFile(
             mode="w", delete=False
         ) as config, tempfile.NamedTemporaryFile(mode="w", delete=False) as shell_history:
             with open(config.name, "w") as f:
-                f.write(json.dumps({"general": {"llm": "openai"}, "search": {"shell_history": shell_history.name, "index_dir": index_dir}}))
+                f.write(
+                    json.dumps(
+                        {
+                            "general": {"llm": "openai"},
+                            "search": {"shell_history": shell_history.name, "index_dir": index_dir},
+                        }
+                    )
+                )
 
             with open(shell_history.name, "w") as f:
                 f.write("echo foobar\n")
@@ -46,4 +62,5 @@ class TestSearchSubcommand:
             set_config("openai.api_key", env.openai_api_key, config_path=config.name)
 
             results = run_subcommand("search", ["foobar", "--output-only"], mcli_args=["--config", config.name])
-            print(results)
+            assert results.status != 0
+            assert "search.allow_remote_llm" in results.stderr

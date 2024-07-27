@@ -193,6 +193,20 @@ impl ConfigKeys {
                 ).secret()
             );
             keys.insert(
+                "openai.api_endpoint".to_string(),
+                ConfigurationKey::new(
+                    "openai.api_endpoint".to_string(),
+                    "Custom API endpoint for the OpenAI API.".to_string(),
+                    Box::new(|config: &mut MagicCliConfig, value: &str| {
+                        if config.openai_config.is_none() {
+                            config.openai_config = Some(OpenAiConfig::default());
+                        }
+                        config.openai_config.as_mut().unwrap().api_endpoint = Some(value.to_string());
+                        Ok(())
+                    }),
+                ).secret()
+            );
+            keys.insert(
                 "openai.model".to_string(),
                 ConfigurationKey::new(
                     "openai.model".to_string(),

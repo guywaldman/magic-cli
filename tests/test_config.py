@@ -68,3 +68,21 @@ class TestConfig:
                 results = run_subcommand("config", ["get", "general.llm"], mcli_args=["--config", f.name])
                 assert results.status == 0
                 assert "openai" in results.stdout
+
+    def test_config_openai_api_endpoint_misconfigured(self):
+        """Tests that the config subcommand fails if the user tries to set the OpenAI API endpoint but the configuration is not set correctly."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
+            with open(tmp.name, "w") as f:
+                f.write(json.dumps({"general": {"llm": "openai"}}))
+
+            results = run_subcommand(
+                "config", ["set", "--key", "openai.api_endpoint", "--value", "http://example.org"], mcli_args=["--config", f.name]
+            )
+            assert results.status == 0
+            results = run_subcommand(
+                "config", ["set", "--key", "openai.api_key", "--value", "non-existent-api-key"], mcli_args=["--config", f.name]
+            )
+            assert results.status == 0
+
+            results = run_subcommand("suggest", ["'Print the current directory using `ls`. Use only `ls`'"], mcli_args=["--config", f.name])
+            assert results.status != 0
